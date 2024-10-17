@@ -15,6 +15,7 @@ like the usual types...
 
 maybe some convenience things like...
 
+- symbols ...
 - keywords `:foo`
 - datetime and date literals like [frink](https://frinklang.org/#DateTimeHandling) ??
 
@@ -44,4 +45,23 @@ some things to consider around functions...
 - implicit v. explicit returns...
 - expressions v. statements...
 
+
+```
+[ x y | + x y ]
+```
+
+
+```
+defun add [ x y ] [ + x y ]
+
+add x y
+```
+
+```
+my-list := #[ 1 2 3 4 ]
+```
+
+```
+my-map := #{ 'key1' 1 'key2' 2 }
+```
 

@@ -1,0 +1,38 @@
+IN: bikeshed.account
+USING: std/uuid/uuid4
+
+def add x y = x + y ;
+
+
+defrecord Account [ :account-id :username :password :email :status ] .
+defm active? [ account :: Account ] equal? 'ACTIVE' (get-slot account :status) ;
+defm activate [ account :: Account ] set-slot account :statys 'ACTIVE' ;
+defm deactivate [ account :: Account ] set-slot account :status 'INACTIVE' ;
+defm change-email [ account :: Account email :: String ] set-slot account :email email ;
+defm change-password [ account :: Account pwd :: String ] set-slot account :password pwd ;
+
+def make-account [ username :: String password :: String email :: String ]
+  if (any? [ (empty? username) (empty? password) (empty? email) ]) (error 'username, password, and email required!')
+
+  ^Account{ uuid4 username password email 'ACTIVE' }
+;
+
+def save-account [ db :: db/Connection account :: Account ]
+  handle 
+    ((execute 'INSERT INTO accounts VALUES (? ? ? ? ?)' (slots account)
+     )
+    [
+      (:error ^(Result.error 'ooops!'))
+      
+
+def save-account(db::db/connection account::Account):
+  handle
+  execute('INSERT INTO accounts VALUES (? ? ?)'
+          [get-slot(:account-id account)
+	   get-slot(:username account)
+	   get-slot(:password account)
+	   get-slot(:email account)
+	   get-slot(:status account)])
+  ^Ok
+
+

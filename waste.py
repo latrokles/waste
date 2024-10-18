@@ -23,6 +23,9 @@ class Symbol(Objeckt):
         return (self.name == rhs.name) and (self.ns == rhs.ns)
 
 
+class Keyword(Symbol):
+    pass
+
 
 class Reader:
     pass

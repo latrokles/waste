@@ -13,6 +13,9 @@ Used for identifiers, they have a namespace, a name, and metadata. They can cont
 
 **Tagged Literals / Data Literals**
 - builtins
+  - datetime
+  - date
+  - ?
 - custom defined
 
 **Lists**
@@ -91,7 +94,7 @@ derive
 
 - Maybe container...
 ```
-or-value (maybe nil) "4"
+or-value (maybe nil) 4  ; returns 4
 ```
 
 - threading / compose ...

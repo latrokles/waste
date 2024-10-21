@@ -9,7 +9,8 @@ coverate html
 
 import unittest
 
-import waste as w
+import waste.waste as w
+
 
 class StringReaderTest(unittest.TestCase):
     def test_reads_a_single_quote_delimited_string(self):

@@ -10,6 +10,7 @@ readme = "README.md"
 python = "^3.11"
 requests = "^2.32.3"
 gnureadline = "^8.2.13"
+watchdog = "^5.0.3"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
@@ -26,3 +27,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 aidem = "waste.aidem:main"
+scribe = "waste.scribe:main"

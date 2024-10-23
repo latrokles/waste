@@ -61,7 +61,9 @@ class Aidem(code.InteractiveConsole):
 
         self.results = self.yt.search(query)
         for i, r in enumerate(self.results):
-            print(f"{format_index(i)} -- {r.title}\n      {r.playback_url}\n")
+            print(f"{format_index(i)} -- {r.title}")
+            print(f"      {r.playback_url}")
+            print(f"      {r.length}\n")
 
     def do_play(self, index):
         index = int(index) - 1

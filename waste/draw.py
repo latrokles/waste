@@ -8,6 +8,7 @@ import sdl2
 from dataclasses import dataclass
 
 from PIL import Image
+from waste.unicode8x15 import fetch_glyph
 from waste.debug import debugmethod
 
 
@@ -159,7 +160,9 @@ class Window:
         self.h = height
         self.zoom = zoom
         self.fps = fps
-        
+
+        self.pixels = Form(0, 0, self.w, self.h)
+
         window_opts = 0
         if is_resizable:
             window_opts |= sdl2.SDL_WINDOW_RESIZABLE
@@ -171,6 +174,7 @@ class Window:
             err = f"Cannot initialize SDL, err={sdl2.SDL_GetError()}"
             raise RuntimeError(err)
 
+        title = f"{title} - ({self.w} x {self.h} : {self.zoom})"
         self.window = sdl2.SDL_CreateWindow(
             title.encode("utf-8"),
             sdl2.SDL_WINDOWPOS_UNDEFINED,
@@ -193,10 +197,18 @@ class Window:
             self.w,
             self.h,
         )
-        self.pixels = Form(0, 0, self.w, self.h)
-        
+
+        sdl2.SDL_SetWindowMinimumSize(self.window, self.w, self.h)
+        sdl2.render.SDL_RenderSetLogicalSize(self.renderer, self.w, self.h)
+        sdl2.render.SDL_RenderSetIntegerScale(self.renderer, 1)
+
+        sdl2.SDL_StartTextInput()
         if start_on_create:
             self.run()
+
+    @property
+    def size(self):
+        return (self.w, self.h)
 
     def run(self):
         next_tick = 0
@@ -221,6 +233,8 @@ class Window:
                 self.handle_mouse(event)
             case sdl2.SDL_KEYDOWN:
                 self.handle_key(event)
+            case sdl2.SDL_TEXTINPUT:
+                self.handle_text(event)
             case sdl2.SDL_WINDOWEVENT:
                 if event.window.event == sdl2.SDL_WINDOWEVENT_EXPOSED:
                     self.redraw()
@@ -239,6 +253,9 @@ class Window:
         print("handling text event")
         self.redraw()
 
+    def clear(self):
+        self.pixels.clear()
+
     def redraw(self):
         sdl2.SDL_UpdateTexture(self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth)
         sdl2.SDL_RenderClear(self.renderer)
@@ -246,6 +263,7 @@ class Window:
         sdl2.SDL_RenderPresent(self.renderer)
 
     def quit(self):
+        sdl2.SDL_StopTextInput()
         sdl2.SDL_DestroyTexture(self.texture)
         sdl2.SDL_DestroyRenderer(self.renderer)
         sdl2.SDL_DestroyWindow(self.window)
@@ -266,22 +284,36 @@ class Window:
 
     @debugmethod
     def draw_image(self, x, y, image):
-        source_col_start = 0
-        source_col_end = image.w
-        source_row_start = 0
-        source_row_end = image.h
+        src_col_start = 0
+        src_col_end = image.w
+        src_row_start = 0
+        src_row_end = image.h
 
-        if image.w >= self.w:
-            source_col_end = min(self.w - 1, image.w)
+        if image.w > self.w:
+            src_col_end = min(self.w + 1, image.w)
 
-        if image.h >= self.h:
-            source_row_end = min(self.h - 1, image.h)
+        if image.h > self.h:
+            src_row_end = min(self.h + 1, image.h)
 
-        for row in range(source_row_end):
+        dst_col_start = x
+        dst_col_end = x + image.w
+        dst_row_start = y
+        dst_row_end = y + image.h
+
+        if dst_col_end >= self.w:
+            dst_col_end = dst_col_end - (dst_col_end - self.w)
+
+        if dst_row_end >= self.h:
+            dst_row_end = dst_row_end - (dst_row_end - self.h)
+
+        print(f"({src_col_start=}, {src_row_start=}) -> ({src_col_end=}, {src_row_end=})")
+        print(f"({dst_col_start=}, {dst_row_start=}) -> ({dst_col_end=}, {dst_row_end=})")
+
+        for row in range(src_row_end):
             self.pixels.put_row_bytes(
-                source_col_start,
+                src_col_start,
                 row,
-                image.row_bytes(0, row, source_row_end),
+                image.row_bytes(0, row, src_col_end),
             )
 
     @debugmethod
@@ -302,22 +334,63 @@ def window_test():
 
 @window_test.command()
 def basic():
-    Window("basic window test")
+    import types
+
+    glyph_w = 8
+    glyph_h = 15
+    def draw_text(self, x, y, text, fg_color, bg_color):
+        x_pos = x
+        y_pos = y
+        print(f"{x_pos, y_pos}")
+        for char in text:
+            if char == "\n":
+                x_pos = x
+                y_pos += glyph_h
+                continue
+
+            glyph = fetch_glyph(char)
+            self.draw_glyph(
+                x_pos,
+                y_pos,
+                glyph,
+                glyph_w,
+                glyph_h,
+                fg_color,
+                bg_color,
+            )
+            x_pos += glyph_w
+
+    def render_coords(self, event):
+        self.clear()
+        if event.type == sdl2.SDL_MOUSEMOTION:
+            x = event.motion.x
+            y = event.motion.y
+            self.draw_text(
+                x,
+                y,
+                f"({x},{y})",
+                Color.from_int(0xa52a2a),
+                Color.from_int(0x000000),
+            )
+        self.redraw()
+
+    w = Window("basic window test", start_on_create=False)
+    w.handle_mouse = types.MethodType(render_coords, w)
+    w.draw_text = types.MethodType(draw_text, w)
+    w.run()
 
 
 @window_test.command()
 def text():
     import types
 
-    a = [0x00, 0x00, 0x00, 0x00, 0x00, 0x3c, 0x02, 0x3e, 0x42, 0x46, 0x3b, 0x00, 0x00, 0x00]
-
     def draw_text_on_input(self, event):
         self.draw_glyph(
             self.w // 2,
             self.h // 2,
-            a,
+            fetch_glyph(event.text.text),
             8,
-            14,
+            15,
             Color.from_int(0xa52a2a),
             Color.from_int(0x000000),
         )
@@ -327,7 +400,7 @@ def text():
         "text window test",
         start_on_create=False,
     )
-    w.handle_key = types.MethodType(draw_text_on_input, w)
+    w.handle_text = types.MethodType(draw_text_on_input, w)
     w.run()
 
 

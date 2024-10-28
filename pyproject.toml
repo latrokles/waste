@@ -11,6 +11,9 @@ python = "^3.11"
 requests = "^2.32.3"
 gnureadline = "^8.2.13"
 watchdog = "^5.0.3"
+pysdl2 = "^0.9.16"
+click = "^8.1.7"
+pillow = "^11.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
@@ -26,5 +29,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-aidem = "waste.aidem:main"
-scribe = "waste.scribe:main"
+waste = "waste.cli:cli"

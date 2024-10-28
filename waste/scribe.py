@@ -6,6 +6,8 @@ import pathlib
 import subprocess
 import time
 
+import click
+
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -107,7 +109,8 @@ def ensure_script_presence():
     script_pathname.write_text(OCR_SWIFT_SCRIPT, "utf-8")
 
 
-def main():
+@click.command()
+def scribe():
     ensure_script_presence()
     observer = Observer()
     observer.schedule(OCRTrigger(), str(get_ocr_dir()), recursive=False)

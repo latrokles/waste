@@ -1,0 +1,329 @@
+import ctypes
+import sys
+
+import click
+import requests
+import sdl2
+
+from dataclasses import dataclass
+
+from PIL import Image
+from waste.debug import debugmethod
+
+
+class OutOfBoundsError(Exception):
+    """Raised when trying to access a location outside a form."""
+
+
+@dataclass
+class Color:
+    r: int
+    g: int
+    b: int
+    a: int = 255
+
+    @property
+    def values(self):
+        return [self.a, self.b, self.g, self.r]
+
+    @classmethod
+    def from_values(cls, values):
+        alpha, blue, green, red = values
+        return cls(red, green, blue, alpha)
+
+    def from_int(rgbint):
+        red = (rgbint & 0xff0000) >> 16
+        green = (rgbint & 0xff00) >> 8
+        blue  = (rgbint & 0xff)
+        return Color(red, green, blue)
+
+    @staticmethod
+    def from_hexstr(hexstr):
+        rgbint = int(hexstr, 16)
+        return Color.from_int(rgbint)
+
+
+class Form:
+    def __init__(self, x, y, w, h, bitmap=None):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        if bitmap is None:
+            bitmap = bytearray(self.w * self.h * self.depth * [0x00])
+        self.bitmap = bitmap
+
+    @property
+    def depth(self):
+        return 4
+
+    @property
+    def bytes(self):
+        return (ctypes.c_char * len(self.bitmap)).from_buffer(self.bitmap)
+
+    def color_at(self, x, y):
+        _0th, _nth = self._pixel_bytes_range_at_point(x, y)
+        pixel_bytes = self.bitmap[_0th:_nth]
+        return Color.from_values(pixel_bytes)
+
+    def put_color_at(self, x, y, color):
+        _0th, _nth = self._pixel_bytes_range_at_point(x, y)
+        self.bitmap[_0th:_nth] = color.values
+
+    def row_bytes(self, x, y, pixel_count):
+        if x + (pixel_count - 1) >= self.w:
+            raise OutOfBoundsError(f'reading beyond bitmap width. start={x}, pixels={pixel_count}, bitmap width={self.w}')
+
+        byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
+        byte_n = byte_0 + (self.depth * (pixel_count - 1))
+        return self.bitmap[byte_0:byte_n]
+
+    def put_row_bytes(self, x, y, row_bytes):
+        if x + ((len(row_bytes) - 1) / self.depth) >= self.w:
+            raise OutOfBoundsError(f'writing beyond bitmap width. start={x}, pixel_count={len(row_bytes) / self.depth}')
+
+        byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
+        byte_n = byte_0 + len(row_bytes)
+        self.bitmap[byte_0:byte_n] = row_bytes
+
+    def fill(self, color):
+        self.bitmap = bytearray(self.w * self.h * color.values)
+
+    def clear(self):
+        self.bitmap = bytearray(self.w * self.h * self.depth * [0x00])
+
+    def _pixel_bytes_range_at_point(self, x, y):
+        x_out_of_bounds = x < 0 or self.w <= x
+        y_out_of_bounds = y < 0 or self.h <= y
+        if x_out_of_bounds or y_out_of_bounds:
+            raise OutOfBoundsError(f'{point} is out of bounds of {self}')
+
+        byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
+        byte_n = byte_0 + self.depth
+        return byte_0, byte_n
+
+
+class ImageForm(Form):
+    @classmethod
+    def from_image(cls, img):
+        w = img.width
+        h = img.height
+        pixels = img.load()
+
+        form = cls(0, 0, w, h)
+        for y in range(h):
+            for x in range(w):
+                r, g, b = pixels[x, y]
+                values = [255, b, g, r]
+                form.put_row_bytes(x, y, values)
+        return form
+
+    @classmethod
+    def from_url(cls, url):
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        return cls.from_image(Image.open(response.raw))
+
+
+DEFAULT_WIDHT = 64 * 8
+DEFAULT_HEIGHT = 32 * 8
+DEFAULT_ZOOM = 2
+DEFAULT_FPS = 30
+
+
+class Window:
+    def __init__(
+        self,
+        title,
+        width=DEFAULT_WIDHT,
+        height=DEFAULT_HEIGHT,
+        zoom=DEFAULT_ZOOM,
+        fps=DEFAULT_FPS,
+        is_resizable=True,
+        has_border=True,
+        start_on_create=True,
+    ):
+
+        self.w = width
+        self.h = height
+        self.zoom = zoom
+        self.fps = fps
+        
+        window_opts = 0
+        if is_resizable:
+            window_opts |= sdl2.SDL_WINDOW_RESIZABLE
+
+        if not has_border:
+            window_opts |= sdl2.SDL_WINDOW_BORDERLESS
+
+        if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) < 0:
+            err = f"Cannot initialize SDL, err={sdl2.SDL_GetError()}"
+            raise RuntimeError(err)
+
+        self.window = sdl2.SDL_CreateWindow(
+            title.encode("utf-8"),
+            sdl2.SDL_WINDOWPOS_UNDEFINED,
+            sdl2.SDL_WINDOWPOS_UNDEFINED,
+            self.w * self.zoom,
+            self.h * self.zoom,
+            window_opts,
+        )
+
+        self.renderer = sdl2.render.SDL_CreateRenderer(
+            self.window,
+            -1,
+            sdl2.SDL_RENDERER_PRESENTVSYNC,
+        )
+
+        self.texture = sdl2.SDL_CreateTexture(
+            self.renderer,
+            sdl2.SDL_PIXELFORMAT_RGBA8888,
+            sdl2.SDL_TEXTUREACCESS_STREAMING,
+            self.w,
+            self.h,
+        )
+        self.pixels = Form(0, 0, self.w, self.h)
+        
+        if start_on_create:
+            self.run()
+
+    def run(self):
+        next_tick = 0
+        while True:
+            tick = sdl2.SDL_GetTicks()
+            if tick < next_tick:
+                sdl2.SDL_Delay(next_tick - tick)
+
+            next_tick = tick + int(1_000 / self.fps)
+            event = sdl2.SDL_Event()
+            while sdl2.SDL_PollEvent(event):
+                self.dispatch_event(event)
+        self.quit()
+
+    def dispatch_event(self, event):
+        match event.type:
+            case sdl2.SDL_QUIT:
+                self.quit()
+            case (sdl2.SDL_MOUSEMOTION |
+                  sdl2.SDL_MOUSEBUTTONUP |
+                  sdl2.SDL_MOUSEBUTTONDOWN):
+                self.handle_mouse(event)
+            case sdl2.SDL_KEYDOWN:
+                self.handle_key(event)
+            case sdl2.SDL_WINDOWEVENT:
+                if event.window.event == sdl2.SDL_WINDOWEVENT_EXPOSED:
+                    self.redraw()
+            case _:
+                pass
+
+    def handle_mouse(self, event):
+        print("handling mouse event")
+        self.redraw()
+
+    def handle_key(self, event):
+        print("handling key event")
+        self.redraw()
+
+    def handle_text(self, event):
+        print("handling text event")
+        self.redraw()
+
+    def redraw(self):
+        sdl2.SDL_UpdateTexture(self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth)
+        sdl2.SDL_RenderClear(self.renderer)
+        sdl2.SDL_RenderCopy(self.renderer, self.texture, None, None)
+        sdl2.SDL_RenderPresent(self.renderer)
+
+    def quit(self):
+        sdl2.SDL_DestroyTexture(self.texture)
+        sdl2.SDL_DestroyRenderer(self.renderer)
+        sdl2.SDL_DestroyWindow(self.window)
+        sdl2.SDL_Quit()
+        sys.exit(0)
+
+    @debugmethod
+    def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
+        for row in range(h):
+            for col in range(w):
+                is_set = (glyph[row] >> (7 - col)) & 0x1
+
+                val = bg_color
+                if is_set:
+                    val = fg_color
+
+                self.put_pixel(x + col, y + row, val)
+
+    @debugmethod
+    def draw_image(self, x, y, image):
+        source_col_start = 0
+        source_col_end = image.w
+        source_row_start = 0
+        source_row_end = image.h
+
+        if image.w >= self.w:
+            source_col_end = min(self.w - 1, image.w)
+
+        if image.h >= self.h:
+            source_row_end = min(self.h - 1, image.h)
+
+        for row in range(source_row_end):
+            self.pixels.put_row_bytes(
+                source_col_start,
+                row,
+                image.row_bytes(0, row, source_row_end),
+            )
+
+    @debugmethod
+    def put_pixel(self, x, y, color):
+        out_of_bounds_in_x = ((x < 0) or x >= self.w)
+        out_of_bounds_in_y = ((y < 0) or y >= self.h)
+
+        if out_of_bounds_in_x or out_of_bounds_in_y:
+            return
+
+        self.pixels.put_color_at(x, y, color)
+
+
+@click.group()
+def window_test():
+    pass
+
+
+@window_test.command()
+def basic():
+    Window("basic window test")
+
+
+@window_test.command()
+def text():
+    import types
+
+    a = [0x00, 0x00, 0x00, 0x00, 0x00, 0x3c, 0x02, 0x3e, 0x42, 0x46, 0x3b, 0x00, 0x00, 0x00]
+
+    def draw_text_on_input(self, event):
+        self.draw_glyph(
+            self.w // 2,
+            self.h // 2,
+            a,
+            8,
+            14,
+            Color.from_int(0xa52a2a),
+            Color.from_int(0x000000),
+        )
+        self.redraw()
+
+    w = Window(
+        "text window test",
+        start_on_create=False,
+    )
+    w.handle_key = types.MethodType(draw_text_on_input, w)
+    w.run()
+
+
+@window_test.command()
+def image():
+    url = "https://avatars.githubusercontent.com/u/35127?v=4"
+    img = ImageForm.from_url(url)
+    w = Window("image window test", start_on_create=False)
+    w.draw_image(0, 0, img)
+    w.run()

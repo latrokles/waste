@@ -7,14 +7,20 @@ import requests
 import socket
 import time
 
+import click
+
 from dataclasses import dataclass
 from functools import cache
 from typing import List
 from subprocess import PIPE, Popen
 from urllib.parse import urlencode
 
+from waste.debug import debugmethod
 
-def main():
+
+
+@click.command()
+def aidem():
     Aidem().start()
 
 
@@ -223,6 +229,7 @@ class ThumbnailInfo:
     height: int
 
     @classmethod
+    @debugmethod
     def from_dict(cls, thumb):
         return cls(
             url=thumb.get('url'),

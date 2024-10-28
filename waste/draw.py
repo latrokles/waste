@@ -105,7 +105,10 @@ class Form:
 
 class ImageForm(Form):
     @classmethod
-    def from_image(cls, img):
+    def from_image(cls, img, width=None, height=None):
+        if (width is not None) and (height is not None):
+            img = img.resize((width, height))
+
         w = img.width
         h = img.height
         pixels = img.load()
@@ -119,10 +122,18 @@ class ImageForm(Form):
         return form
 
     @classmethod
-    def from_url(cls, url):
+    def from_url(cls, url, width=None, height=None):
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        return cls.from_image(Image.open(response.raw))
+        with Image.open(response.raw) as img:
+            return cls.from_image(img, width, height)
+
+    @classmethod
+    def from_path(cls, pathname, width=None, height=None):
+        with Image.open(pathname) as img:
+            return cls.from_image(img, width, height)
+
+
 
 
 DEFAULT_WIDHT = 64 * 8
@@ -321,9 +332,18 @@ def text():
 
 
 @window_test.command()
-def image():
-    url = "https://avatars.githubusercontent.com/u/35127?v=4"
-    img = ImageForm.from_url(url)
+@click.option("--size", type=(int, int))
+@click.argument("image-location")
+def image(image_location, size):
+    w, h = None, None
+    if size:
+        w, h = size
+
+    if image_location.startswith("http"):
+        img = ImageForm.from_url(url, width=w, height=h)
+    else:
+        img = ImageForm.from_path(image_location, width=w, height=h)
+
     w = Window("image window test", start_on_create=False)
     w.draw_image(0, 0, img)
     w.run()

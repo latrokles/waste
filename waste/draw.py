@@ -413,7 +413,7 @@ def image(image_location, size):
         w, h = size
 
     if image_location.startswith("http"):
-        img = ImageForm.from_url(url, width=w, height=h)
+        img = ImageForm.from_url(image_location, width=w, height=h)
     else:
         img = ImageForm.from_path(image_location, width=w, height=h)
 

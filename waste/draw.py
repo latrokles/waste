@@ -32,6 +32,7 @@ class Color:
         alpha, blue, green, red = values
         return cls(red, green, blue, alpha)
 
+    @staticmethod
     def from_int(rgbint):
         red = (rgbint & 0xff0000) >> 16
         green = (rgbint & 0xff00) >> 8
@@ -42,6 +43,17 @@ class Color:
     def from_hexstr(hexstr):
         rgbint = int(hexstr, 16)
         return Color.from_int(rgbint)
+
+
+BLACK = Color.from_int(0x000000)
+DARK_YELLOW = Color.from_int(0xEEEE9E)
+PALE_BLUEGREEN = Color.from_int(0xAAFFFF)
+PALE_GREYGREEN = Color.from_int(0x9EEEEE)
+PALE_YELLOW = Color.from_int(0xFFFFAA)  # from plan9port (didn't match)
+PALE_YELLOW = Color.from_int(0xFFF5E1)  # from bitters/grid
+PURPLE_BLUE = Color.from_int(0x8888CCF)
+YELLOW_GREEN = Color.from_int(0x99994C)
+WHITE = Color.from_int(0xFFFFFF)
 
 
 class Form:
@@ -117,8 +129,14 @@ class ImageForm(Form):
         form = cls(0, 0, w, h)
         for y in range(h):
             for x in range(w):
-                r, g, b = pixels[x, y]
-                values = [255, b, g, r]
+                pixel_value = pixels[x, y]
+                a = 255
+
+                if len(pixel_value) == 4:
+                    r, g, b, a = pixel_value
+                else:
+                    r, g, b = pixel_value
+                values = [a, b, g, r]
                 form.put_row_bytes(x, y, values)
         return form
 
@@ -153,6 +171,7 @@ class Window:
         fps=DEFAULT_FPS,
         is_resizable=True,
         has_border=True,
+        background=None,
         start_on_create=True,
     ):
 
@@ -160,6 +179,10 @@ class Window:
         self.h = height
         self.zoom = zoom
         self.fps = fps
+
+        if background is None:
+            background = BLACK
+        self.background = background
 
         self.pixels = Form(0, 0, self.w, self.h)
 
@@ -235,6 +258,10 @@ class Window:
                 self.handle_key(event)
             case sdl2.SDL_TEXTINPUT:
                 self.handle_text(event)
+            case sdl2.SDL_DROPFILE:
+                self.handle_drop(event)
+            case sdl2.SDL_CLIPBOARDUPDATE:
+                self.handle_clipboard_update(event)
             case sdl2.SDL_WINDOWEVENT:
                 if event.window.event == sdl2.SDL_WINDOWEVENT_EXPOSED:
                     self.redraw()
@@ -253,8 +280,19 @@ class Window:
         print("handling text event")
         self.redraw()
 
+    def handle_drop(self, event):
+        print("handling drop event")
+        print(event.drop.file)
+        self.redraw()
+
+    def handle_clipboard_update(self, event):
+        print("handling clipboard update")
+
     def clear(self):
-        self.pixels.clear()
+        if self.background == BLACK:
+            self.pixels.clear()
+            return
+        self.pixels.fill(self.background)
 
     def redraw(self):
         sdl2.SDL_UpdateTexture(self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth)
@@ -385,19 +423,21 @@ def text():
     import types
 
     def draw_text_on_input(self, event):
+        self.clear()
         self.draw_glyph(
             self.w // 2,
             self.h // 2,
             fetch_glyph(event.text.text),
             8,
             15,
-            Color.from_int(0xa52a2a),
-            Color.from_int(0x000000),
+            BLACK,
+            PALE_YELLOW,
         )
         self.redraw()
 
     w = Window(
         "text window test",
+        background=PALE_YELLOW,
         start_on_create=False,
     )
     w.handle_text = types.MethodType(draw_text_on_input, w)

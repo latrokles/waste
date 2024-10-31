@@ -56,12 +56,29 @@ YELLOW_GREEN = Color.from_int(0x99994C)
 WHITE = Color.from_int(0xFFFFFF)
 
 
+@dataclass
+class Point:
+    x: int
+    y: int
+
+    def __str__(self):
+        return f"P({self.x}, {self.y})"
+
+
+@dataclass
+class Rectangle:
+    origin: Point
+    corner: Point
+
+
 class Form:
     def __init__(self, x, y, w, h, bitmap=None):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
+        self.rect = Rectangle(Point(x, y), Point(x + w, y + h))
+
         if bitmap is None:
             bitmap = bytearray(self.w * self.h * self.depth * [0x00])
         self.bitmap = bitmap
@@ -113,7 +130,7 @@ class Form:
         x_out_of_bounds = x < 0 or self.w <= x
         y_out_of_bounds = y < 0 or self.h <= y
         if x_out_of_bounds or y_out_of_bounds:
-            raise OutOfBoundsError(f"{point} is out of bounds of {self}")
+            raise OutOfBoundsError(f"({x=}, {y=}) is out of bounds of {self.rect}")
 
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
         byte_n = byte_0 + self.depth
@@ -161,6 +178,18 @@ DEFAULT_WIDHT = 64 * 8
 DEFAULT_HEIGHT = 32 * 8
 DEFAULT_ZOOM = 2
 DEFAULT_FPS = 30
+
+
+class MinimumWindow:
+    pass
+
+
+class GraphicsWindowMixin:
+    pass
+
+
+class TextWindowMixin:
+    pass
 
 
 class Window:

@@ -34,9 +34,9 @@ class Color:
 
     @staticmethod
     def from_int(rgbint):
-        red = (rgbint & 0xff0000) >> 16
-        green = (rgbint & 0xff00) >> 8
-        blue  = (rgbint & 0xff)
+        red = (rgbint & 0xFF0000) >> 16
+        green = (rgbint & 0xFF00) >> 8
+        blue = rgbint & 0xFF
         return Color(red, green, blue)
 
     @staticmethod
@@ -85,7 +85,9 @@ class Form:
 
     def row_bytes(self, x, y, pixel_count):
         if x + (pixel_count - 1) >= self.w:
-            raise OutOfBoundsError(f'reading beyond bitmap width. start={x}, pixels={pixel_count}, bitmap width={self.w}')
+            raise OutOfBoundsError(
+                f"reading beyond bitmap width. start={x}, pixels={pixel_count}, bitmap width={self.w}"
+            )
 
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
         byte_n = byte_0 + (self.depth * (pixel_count - 1))
@@ -93,7 +95,9 @@ class Form:
 
     def put_row_bytes(self, x, y, row_bytes):
         if x + ((len(row_bytes) - 1) / self.depth) >= self.w:
-            raise OutOfBoundsError(f'writing beyond bitmap width. start={x}, pixel_count={len(row_bytes) / self.depth}')
+            raise OutOfBoundsError(
+                f"writing beyond bitmap width. start={x}, pixel_count={len(row_bytes) / self.depth}"
+            )
 
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
         byte_n = byte_0 + len(row_bytes)
@@ -109,7 +113,7 @@ class Form:
         x_out_of_bounds = x < 0 or self.w <= x
         y_out_of_bounds = y < 0 or self.h <= y
         if x_out_of_bounds or y_out_of_bounds:
-            raise OutOfBoundsError(f'{point} is out of bounds of {self}')
+            raise OutOfBoundsError(f"{point} is out of bounds of {self}")
 
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
         byte_n = byte_0 + self.depth
@@ -151,8 +155,6 @@ class ImageForm(Form):
     def from_path(cls, pathname, width=None, height=None):
         with Image.open(pathname) as img:
             return cls.from_image(img, width, height)
-
-
 
 
 DEFAULT_WIDHT = 64 * 8
@@ -250,9 +252,9 @@ class Window:
         match event.type:
             case sdl2.SDL_QUIT:
                 self.quit()
-            case (sdl2.SDL_MOUSEMOTION |
-                  sdl2.SDL_MOUSEBUTTONUP |
-                  sdl2.SDL_MOUSEBUTTONDOWN):
+            case (
+                sdl2.SDL_MOUSEMOTION | sdl2.SDL_MOUSEBUTTONUP | sdl2.SDL_MOUSEBUTTONDOWN
+            ):
                 self.handle_mouse(event)
             case sdl2.SDL_KEYDOWN:
                 self.handle_key(event)
@@ -295,7 +297,9 @@ class Window:
         self.pixels.fill(self.background)
 
     def redraw(self):
-        sdl2.SDL_UpdateTexture(self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth)
+        sdl2.SDL_UpdateTexture(
+            self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth
+        )
         sdl2.SDL_RenderClear(self.renderer)
         sdl2.SDL_RenderCopy(self.renderer, self.texture, None, None)
         sdl2.SDL_RenderPresent(self.renderer)
@@ -344,9 +348,6 @@ class Window:
         if dst_row_end >= self.h:
             dst_row_end = dst_row_end - (dst_row_end - self.h)
 
-        print(f"({src_col_start=}, {src_row_start=}) -> ({src_col_end=}, {src_row_end=})")
-        print(f"({dst_col_start=}, {dst_row_start=}) -> ({dst_col_end=}, {dst_row_end=})")
-
         for row in range(src_row_end):
             self.pixels.put_row_bytes(
                 src_col_start,
@@ -356,8 +357,8 @@ class Window:
 
     @debugmethod
     def put_pixel(self, x, y, color):
-        out_of_bounds_in_x = ((x < 0) or x >= self.w)
-        out_of_bounds_in_y = ((y < 0) or y >= self.h)
+        out_of_bounds_in_x = (x < 0) or x >= self.w
+        out_of_bounds_in_y = (y < 0) or y >= self.h
 
         if out_of_bounds_in_x or out_of_bounds_in_y:
             return
@@ -376,6 +377,7 @@ def basic():
 
     glyph_w = 8
     glyph_h = 15
+
     def draw_text(self, x, y, text, fg_color, bg_color):
         x_pos = x
         y_pos = y
@@ -407,7 +409,7 @@ def basic():
                 x,
                 y,
                 f"({x},{y})",
-                Color.from_int(0xa52a2a),
+                Color.from_int(0xA52A2A),
                 Color.from_int(0x000000),
             )
         self.redraw()

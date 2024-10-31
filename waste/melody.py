@@ -31,7 +31,7 @@ class Melody(Window):
             zoom=1,
             is_resizable=False,
             background=PALE_YELLOW,
-            start_on_create=False
+            start_on_create=False,
         )
         self.clear()
         self.tracks = []
@@ -77,12 +77,6 @@ class Melody(Window):
                 continue
 
             self.draw_glyph(
-                posx,
-                posy,
-                fetch_glyph(char),
-                CELL_W,
-                CELL_H,
-                TEXT_COLOR,
-                BACKGROUND
+                posx, posy, fetch_glyph(char), CELL_W, CELL_H, TEXT_COLOR, BACKGROUND
             )
             posx += CELL_W

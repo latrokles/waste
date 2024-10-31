@@ -312,7 +312,7 @@ class Window:
     def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
         for row in range(h):
             for col in range(w):
-                is_set = (glyph[row] >> (7 - col)) & 0x1
+                is_set = (glyph[row] >> ((w - 1) - col)) & 0x1
 
                 val = bg_color
                 if is_set:

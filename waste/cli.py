@@ -1,6 +1,7 @@
 import click
 
 from waste.aidem import aidem
+from waste.melody import melody
 from waste.scribe import scribe
 from waste.draw import window_test
 
@@ -12,5 +13,6 @@ def cli(debug):
 
 
 cli.add_command(aidem)
+cli.add_command(melody)
 cli.add_command(scribe)
 cli.add_command(window_test)

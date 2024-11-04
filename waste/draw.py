@@ -56,28 +56,12 @@ YELLOW_GREEN = Color.from_int(0x99994C)
 WHITE = Color.from_int(0xFFFFFF)
 
 
-@dataclass
-class Point:
-    x: int
-    y: int
-
-    def __str__(self):
-        return f"P({self.x}, {self.y})"
-
-
-@dataclass
-class Rectangle:
-    origin: Point
-    corner: Point
-
-
 class Form:
     def __init__(self, x, y, w, h, bitmap=None):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
-        self.rect = Rectangle(Point(x, y), Point(x + w, y + h))
 
         if bitmap is None:
             bitmap = bytearray(self.w * self.h * self.depth * [0x00])
@@ -181,7 +165,12 @@ DEFAULT_FPS = 30
 
 
 class MinimumWindow:
-    pass
+
+    @property
+    def position(self):
+        x, y = ctypes.c_int(0), ctypes.c_int(0)
+        sdl2.SDL_GetWindowPosition(self.window, x, y)
+        return int(x.value), int(y.value)
 
 
 class GraphicsWindowMixin:
@@ -192,7 +181,7 @@ class TextWindowMixin:
     pass
 
 
-class Window:
+class Window(MinimumWindow):
     def __init__(
         self,
         title,
@@ -257,6 +246,7 @@ class Window:
         sdl2.render.SDL_RenderSetIntegerScale(self.renderer, 1)
 
         sdl2.SDL_StartTextInput()
+        print(self.position)
         if start_on_create:
             self.run()
 

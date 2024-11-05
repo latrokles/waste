@@ -60,10 +60,15 @@ if CommandLine.argc < 2 {
 }
 """
 
+DEFAULT_DATA_DIR = "Desktop/OCR"
+SUPPORTED_IMAGE_EXTENSIONS = [".heic", ".png", ".jpeg", ".jpg", ".tiff"]
+ENCODING = "utf-8"
+TEXT_SUFFIX = ".txt"
+
 
 CELL_W = 9
 CELL_H = 15
-COLS = 50
+COLS = 37
 ROWS = 5
 PAD_X = 2
 PAD_Y = 1
@@ -101,31 +106,25 @@ class Nabu(Window):
             zoom=1,
             is_resizable=False,
             has_border=False,
+            start_on_create=False,
             background=BACKGROUND,
         )
-        # TODO set window position to top left corner
-        # TODO make window always in top (is this even possible)
-        # TODO ensure script location
-        # TODO parse configuration from homedir
+        self.move(0, 0)
+        self.enable_always_on_top()
+        self.run()
 
     def parse_config(self, config_pathname):
         if not config_pathname.exists():
             return Config(
-                data_dir=(pathlib.Path.home() / "Desktop/OCR"),
-                supported_image_extensions=[
-                    ".heic",
-                    ".png",
-                    ".jpeg",
-                    ".jpg",
-                    ".tiff"
-                ],
+                data_dir=(pathlib.Path.home() / DEFAULT_DATA_DIR),
+                supported_image_extensions=SUPPORTED_IMAGE_EXTENSIONS,
             )
-        return Config(**json.loads(config_pathname.read_text("utf-8")))
+        return Config(**json.loads(config_pathname.read_text(ENCODING)))
 
     def ensure_script_presence(self):
         if self.config.script_path.exists():
             return
-        self.config.script_path.write_text(OCR_SWIFT_SCRIPT, "utf-8")
+        self.config.script_path.write_text(OCR_SWIFT_SCRIPT, ENCODING)
 
     def redraw(self):
         # TODO refactor window code to make this more ergonomic
@@ -134,24 +133,27 @@ class Nabu(Window):
         super().redraw()
 
     def handle_drop(self, event):
-        # TODO
-        # right now text output is going to the location of the image file
-        # 1. copy image file to data directory
-        # 2. use the new image in the data directory as the file to ocr
-        # 3. write the ocr txt to the same data dir
+        src_pathname = event.drop.file.decode(ENCODING)
+        self.trigger_processing(pathlib.Path(src_pathname))
+
+    def trigger_processing(self, pathname):
         script_path = self.config.script_path
-        src_pathname = event.drop.file.decode("utf-8")
-        extension = pathlib.Path(src_pathname).suffix
-        dst_pathname = src_pathname.replace(extension, ".txt")
+        new_img_pathname = self.copy_to_data_dir(pathname)
+        new_txt_pathname = new_img_pathname.with_suffix(TEXT_SUFFIX)
 
-        ocr_cmd = ["swift", str(script_path), src_pathname]
+        ocr_cmd = ["swift", str(script_path), str(new_img_pathname)]
         with subprocess.Popen(ocr_cmd, stdout=subprocess.PIPE) as ocr_proc:
-            with open(dst_pathname, "w", encoding="utf-8") as output_file:
+            with open(new_txt_pathname, "w", encoding=ENCODING) as output_file:
                 for line in ocr_proc.stdout:
-                    output_file.write(line.decode('utf-8'))
+                    output_file.write(line.decode(ENCODING))
 
-        launch_cmd = ["open", dst_pathname]
+        launch_cmd = ["open", new_txt_pathname]
         subprocess.Popen(launch_cmd)
+
+    def copy_to_data_dir(self, src_img_pathname):
+        dst_pathname = self.config.data_dir / src_img_pathname.name
+        dst_pathname.write_bytes(src_img_pathname.read_bytes())
+        return dst_pathname
 
     def draw_text(self, x, y, text):
         posx = x
@@ -166,3 +168,8 @@ class Nabu(Window):
                 posx, posy, fetch_glyph(char), CELL_W, CELL_H, TEXT_COLOR, BACKGROUND
             )
             posx += CELL_W
+
+
+
+if __name__ == "__main__":
+    nabu()

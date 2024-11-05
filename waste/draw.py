@@ -172,6 +172,15 @@ class MinimumWindow:
         sdl2.SDL_GetWindowPosition(self.window, x, y)
         return int(x.value), int(y.value)
 
+    def move(self, x, y):
+        sdl2.SDL_SetWindowPosition(self.window, x, y)
+
+    def enable_always_on_top(self):
+        sdl2.SDL_SetWindowAlwaysOnTop(self.window, True)
+
+    def disable_always_on_top(self):
+        sdl2.SDL_SetWindowAlwaysOnTop(self.window, False)
+
 
 class GraphicsWindowMixin:
     pass

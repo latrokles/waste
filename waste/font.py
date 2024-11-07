@@ -293,7 +293,7 @@ class Font:
     def count(self):
         return len(self.glyphs)
 
-    def fetch_glyph(self, rune):
+    def glyph(self, rune):
         if isinstance(rune, bytes):
             rune = rune.decode("utf-8")
 

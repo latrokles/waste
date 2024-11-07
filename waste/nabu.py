@@ -7,8 +7,9 @@ import click
 from dataclasses import dataclass
 from typing import List
 
-from waste.draw import Window, fetch_glyph
-from waste.draw import BLACK, PALE_YELLOW
+from waste import draw
+from waste import gui
+from waste.font import UNICODE_8x15
 
 
 OCR_SWIFT_SCRIPT = """
@@ -75,14 +76,14 @@ PAD_Y = 1
 WIDTH = CELL_W * (COLS + (2 * PAD_X))
 HEIGHT = CELL_H * (ROWS + (2 * PAD_Y))
 
-TEXT_COLOR = BLACK
-BACKGROUND = PALE_YELLOW
+TEXT_COLOR = draw.BLACK
+BACKGROUND = draw.PALE_YELLOW
 
 
 @click.command()
 def nabu():
     config = pathlib.Path.home() / ".nabu.json"
-    Nabu(config_pathname=config)
+    Nabu(font=UNICODE_8x15, config_pathname=config)
 
 
 @dataclass
@@ -95,20 +96,20 @@ class Config:
         return self.data_dir / "ocr.swift"
 
 
-class Nabu(Window):
-    def __init__(self, config_pathname):
-        self.config = self.parse_config(config_pathname)
-        self.ensure_script_presence()
+class Nabu(gui.Window):
+    def __init__(self, font, config_pathname):
         super().__init__(
             "NABU 📷 -> 📃",
             width=WIDTH,
             height=HEIGHT,
             zoom=1,
-            is_resizable=False,
-            has_border=False,
-            start_on_create=False,
             background=BACKGROUND,
         )
+        self.font = font
+        self.config = self.parse_config(config_pathname)
+        self.ensure_script_presence()
+        self.hide_borders()
+        self.disable_resizing()
         self.move(0, 0)
         self.enable_always_on_top()
         self.run()
@@ -127,14 +128,18 @@ class Nabu(Window):
         self.config.script_path.write_text(OCR_SWIFT_SCRIPT, ENCODING)
 
     def redraw(self):
-        # TODO refactor window code to make this more ergonomic
         self.clear()
-        self.draw_text(2 * CELL_W, 1 * CELL_H, "Drop image file here to extract text.")
-        super().redraw()
+        self.draw_text(
+            2 * CELL_W,
+            1 * CELL_H,
+            "Drop image file here to extract text.",
+            self.font,
+            TEXT_COLOR,
+            BACKGROUND,
+        )
 
-    def handle_drop(self, event):
-        src_pathname = event.drop.file.decode(ENCODING)
-        self.trigger_processing(pathlib.Path(src_pathname))
+    def on_file_drop(self, pathname):
+        self.trigger_processing(pathname)
 
     def trigger_processing(self, pathname):
         script_path = self.config.script_path
@@ -154,21 +159,6 @@ class Nabu(Window):
         dst_pathname = self.config.data_dir / src_img_pathname.name
         dst_pathname.write_bytes(src_img_pathname.read_bytes())
         return dst_pathname
-
-    def draw_text(self, x, y, text):
-        posx = x
-        posy = y
-        for char in text:
-            if char == "\n":
-                posx = x
-                posy += CELL_H
-                continue
-
-            self.draw_glyph(
-                posx, posy, fetch_glyph(char), CELL_W, CELL_H, TEXT_COLOR, BACKGROUND
-            )
-            posx += CELL_W
-
 
 
 if __name__ == "__main__":

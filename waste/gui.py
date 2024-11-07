@@ -8,6 +8,7 @@ from waste import draw
 
 DEFAULT_ZOOM = 2
 DEFAULT_FPS = 30
+ENCODING = "utf-8"
 
 
 class EventOpsMixin:
@@ -31,7 +32,7 @@ class EventOpsMixin:
 
 
 class GraphicOpsMixin:
-    def draw(self):
+    def redraw(self):
         pass
 
     def draw_path(self, points, brush, op=draw.Operation.STORE):
@@ -41,7 +42,7 @@ class GraphicOpsMixin:
         pass
 
     def draw_rectangle(
-        self, origin, corner, brush, op=draw.Operarion.STORE, fill=False
+        self, origin, corner, brush, op=draw.Operation.STORE, fill=False
     ):
         pass
 
@@ -72,7 +73,7 @@ class GraphicOpsMixin:
             dst_row_end = dst_row_end - (dst_row_end - self.h)
 
         for row in range(src_row_end):
-            self.pixels.put_row_bytes(
+            self.screen.put_row_bytes(
                 src_col_start,
                 row,
                 image.row_bytes(0, row, src_col_end),
@@ -110,7 +111,7 @@ class GraphicOpsMixin:
         if out_of_bounds_in_x or out_of_bounds_in_y:
             return
 
-        self.pixels.put_color_at(x, y, color)
+        self.screen.put_color_at(x, y, color)
 
 
 class Window(EventOpsMixin, GraphicOpsMixin):
@@ -130,7 +131,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         self.fps = fps
 
         self.background = background or draw.BLACK
-        self.screen = draw.Form(0, self.w, self.h)  # TODO use factory method
+        self.screen = draw.Form(0, 0, self.w, self.h)  # TODO use factory method
 
         if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) < 0:
             err = f"Cannot initialize SDL, err={sdl2.SDL_GetError()}"
@@ -260,7 +261,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         self.redisplay()
 
     def handle_drop(self, event):
-        self.on_file_drop(pathlib.Path(event.drop.file))
+        self.on_file_drop(pathlib.Path(event.drop.file.decode(ENCODING)))
         self.redisplay()
 
     def handle_clipboard_update(self, event):
@@ -269,14 +270,14 @@ class Window(EventOpsMixin, GraphicOpsMixin):
 
     def clear(self):
         if self.background == draw.BLACK:
-            self.pixels.clear()
+            self.screen.clear()
             return
-        self.pixels.fill(self.background)
+        self.screen.fill(self.background)
 
     def redisplay(self):
-        self.draw()
+        self.redraw()
         sdl2.SDL_UpdateTexture(
-            self.texture, None, self.pixels.bytes, self.pixels.w * self.pixels.depth
+            self.texture, None, self.screen.bytes, self.screen.w * self.screen.depth
         )
         sdl2.SDL_RenderClear(self.renderer)
         sdl2.SDL_RenderCopy(self.renderer, self.texture, None, None)

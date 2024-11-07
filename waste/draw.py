@@ -6,14 +6,23 @@ import requests
 import sdl2
 
 from dataclasses import dataclass
+from enum import Enum
 
 from PIL import Image
-from waste.unicode8x15 import fetch_glyph
+from waste.font import fetch_glyph
 from waste.debug import debugmethod
 
 
 class OutOfBoundsError(Exception):
     """Raised when trying to access a location outside a form."""
+
+
+class Operation(Enum):
+    STORE = "STORE"  # dst = src
+    OR = "OR"        # dst = dst | src
+    AND = "AND"      # dst = dst & src
+    XOR = "XOR"      # dst = dst ^ src
+    CLR = "CLR"      # dst = dst & ~src
 
 
 @dataclass

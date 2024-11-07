@@ -280,3 +280,27 @@ def fetch_glyph(rune):
         return GLYPHS[191]  # error
 
     return GLYPHS[index]
+
+
+class Font:
+    def __init__(self, name, width, height, glyphs):
+        self.name = name
+        self.w = width
+        self.h = height
+        self.glyphs = glyphs
+
+    @property
+    def count(self):
+        return len(self.glyphs)
+
+    def fetch_glyph(self, rune):
+        if isinstance(rune, bytes):
+            rune = rune.decode("utf-8")
+
+        index = ord(rune)
+        if index > self.count:
+            return self.glyphs[191]  # error
+
+        return self.glyphs[index]
+
+UNICODE_8x15 = Font("unicode8x15", 8, 15, GLYPHS)

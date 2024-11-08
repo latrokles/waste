@@ -133,6 +133,10 @@ class Window(EventOpsMixin, GraphicOpsMixin):
 
         self.background = background or draw.BLACK
         self.screen = draw.Form(0, 0, self.w, self.h)  # TODO use factory method
+        self.mousex = 0
+        self.mousey = 0
+        self.pmousex = 0
+        self.pmousey = 0
 
         if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) < 0:
             err = f"Cannot initialize SDL, err={sdl2.SDL_GetError()}"
@@ -249,6 +253,13 @@ class Window(EventOpsMixin, GraphicOpsMixin):
                 pass
 
     def handle_mouse(self, event):
+        if event.type == sdl2.SDL_MOUSEMOTION:
+            self.pmousex = self.mousex
+            self.pmousey = self.mousey
+
+            self.mousex = event.motion.x
+            self.mousey = event.motion.y
+
         self.on_mouse_input(event)  # TODO pass a generic event (no SDL)
         self.redisplay()
 
@@ -306,12 +317,11 @@ def basic():
             super().__init__("basic window test", width=420, height=360)
             self.font = font
 
-        def on_mouse_input(self, event):
-            if event.type == sdl2.SDL_MOUSEMOTION:
-                x = event.motion.x
-                y = event.motion.y
-                self.clear()
-                self.draw_text(x, y, f"({x}, {y})", self.font, draw.WHITE, draw.BLACK)
+        def redraw(self):
+            self.clear()
+            x = self.mousex
+            y = self.mousey
+            self.draw_text(x, y, f"({x}, {y})", self.font, draw.WHITE, draw.BLACK)
 
     BasicTest(font=UNICODE_8x15).run()
 

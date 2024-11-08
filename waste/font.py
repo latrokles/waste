@@ -303,4 +303,4 @@ class Font:
 
         return self.glyphs[index]
 
-UNICODE_8x15 = Font("unicode8x15", 8, 15, GLYPHS)
+UNICODE_8x15 = Font("unicode8x15", 9, 15, GLYPHS)

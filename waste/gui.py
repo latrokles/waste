@@ -2,6 +2,7 @@ import ctypes
 import pathlib
 import sys
 
+import click
 import sdl2
 
 from waste import draw
@@ -164,7 +165,6 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         sdl2.SDL_SetWindowMinimumSize(self.window, self.w, self.h)
         sdl2.render.SDL_RenderSetLogicalSize(self.renderer, self.w, self.h)
         sdl2.render.SDL_RenderSetIntegerScale(self.renderer, 1)
-
         sdl2.SDL_StartTextInput()
 
     @property
@@ -249,15 +249,15 @@ class Window(EventOpsMixin, GraphicOpsMixin):
                 pass
 
     def handle_mouse(self, event):
-        self.on_mouse_input(...)  # TODO pass a generic event (no SDL)
+        self.on_mouse_input(event)  # TODO pass a generic event (no SDL)
         self.redisplay()
 
     def handle_key(self, event):
-        self.on_key_input(...)  # TODO pass a generic event (no SDL)
+        self.on_key_input(event.key.keysym.sym)  # TODO pass a generic event (no SDL)
         self.redisplay()
 
     def handle_text(self, event):
-        self.on_text_input(event.text.decode("utf-8"))
+        self.on_text_input(event.text.text.decode("utf-8"))
         self.redisplay()
 
     def handle_drop(self, event):
@@ -290,3 +290,72 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         sdl2.SDL_DestroyWindow(self.window)
         sdl2.SDL_Quit()
         sys.exit(0)
+
+
+@click.group()
+def gui_test():
+    pass
+
+
+@gui_test.command()
+def basic():
+    from waste.font import UNICODE_8x15
+
+    class BasicTest(Window):
+        def __init__(self, font):
+            super().__init__("basic window test", width=420, height=360)
+            self.font = font
+
+        def on_mouse_input(self, event):
+            if event.type == sdl2.SDL_MOUSEMOTION:
+                x = event.motion.x
+                y = event.motion.y
+                self.clear()
+                self.draw_text(x, y, f"({x}, {y})", self.font, draw.WHITE, draw.BLACK)
+
+    BasicTest(font=UNICODE_8x15).run()
+
+
+
+@gui_test.command()
+def textinput():
+    from waste.font import UNICODE_8x15
+
+    class TextInputTest(Window):
+        def __init__(self, font):
+            super().__init__("textinput test", width=420, height=360, background=draw.PALE_YELLOW)
+            self.font = font
+            self.doc = []
+
+        def on_text_input(self, text):
+            self.doc.append(text)
+
+        def on_key_input(self, sym):
+            if sym == sdl2.SDLK_RETURN:
+                self.doc.append("\n")
+
+        def redraw(self):
+            text = "".join(self.doc)
+            print(text)
+            self.clear()
+            self.draw_text(0, 0, text, self.font, draw.BLACK, draw.PALE_YELLOW)
+
+    TextInputTest(font=UNICODE_8x15).run()
+
+
+@gui_test.command()
+@click.option("--size", type=(int, int))
+@click.argument("image-location")
+def image(image_location, size):
+    w, h = None, None
+    if size:
+        w, h = size
+
+    if image_location.startswith("http"):
+        img = draw.ImageForm.from_url(image_location, width=w, height=h)
+    else:
+        img = draw.ImageForm.from_path(image_location, width=w, height=h)
+
+    w = Window("image test", width=420, height=360)
+    w.draw_image(0, 0, img)
+    w.run()

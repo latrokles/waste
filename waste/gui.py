@@ -1,3 +1,4 @@
+import enum
 import ctypes
 import pathlib
 import sys
@@ -5,18 +6,100 @@ import sys
 import click
 import sdl2
 
+from dataclasses import dataclass, field
+
 from waste import draw
 
-DEFAULT_ZOOM = 2
+DEFAULT_ZOOM = 1
 DEFAULT_FPS = 30
 ENCODING = "utf-8"
+
+
+@enum.unique
+class Modifier(enum.IntEnum):
+    ESC = sdl2.SDLK_ESCAPE
+    F1 = sdl2.SDLK_F1
+    F2 = sdl2.SDLK_F2
+    F3 = sdl2.SDLK_F3
+    F4 = sdl2.SDLK_F4
+    F5 = sdl2.SDLK_F5
+    F6 = sdl2.SDLK_F6
+    F7 = sdl2.SDLK_F7
+    F8 = sdl2.SDLK_F8
+    F9 = sdl2.SDLK_F9
+    F10 = sdl2.SDLK_F10
+    F11 = sdl2.SDLK_F11
+    F12 = sdl2.SDLK_F12
+    TAB = sdl2.SDLK_TAB
+    CAPS = sdl2.SDLK_CAPSLOCK
+    LSHIFT = sdl2.SDLK_LSHIFT
+    LCTRL = sdl2.SDLK_LCTRL
+    LALT = sdl2.SDLK_LALT
+    LMETA = sdl2.SDLK_LGUI
+    SPACE = sdl2.SDLK_SPACE
+    RMETA = sdl2.SDLK_RGUI
+    RALT = sdl2.SDLK_RALT
+    RCTRL = sdl2.SDLK_RCTRL
+    RSHIFT = sdl2.SDLK_RSHIFT
+    ENTER = sdl2.SDLK_RETURN
+    DEL = sdl2.SDLK_DELETE
+    BACKSPACE = sdl2.SDLK_BACKSPACE
+    UP = sdl2.SDLK_UP
+    DOWN = sdl2.SDLK_DOWN
+    LEFT = sdl2.SDLK_LEFT
+    RIGHT = sdl2.SDLK_RIGHT
+
+
+@dataclass
+class MouseDevice:
+    x: int = 0
+    y: int = 0
+    px: int = 0
+    py: int = 0
+    lb: bool = False
+    mb: bool = False
+    rb: bool = False
+
+    def move(self, x, y):
+        self.px = self.x
+        self.py = self.y
+
+        self.x = x
+        self.y = y
+
+
+@dataclass
+class KeyboardDevice:
+    active: dict = field(default_factory=dict)
+
+    def press(self, sym):
+        key = self._convert_sym_to_key(sym)
+        self.active[key] = True
+        return key
+
+    def release(self, sym):
+        key = self._convert_sym_to_key(sym)
+        self.active[key] = False
+        return key
+
+    def _convert_sym_to_key(self, sym):
+        if any(x for x in Modifier.__members__.values() if x.value == sym):
+            return Modifier(sym).name
+        return chr(sym)
+
+    @property
+    def pressed(self):
+        return {mod for mod, val in self.modifiers.items() if val == 1}
 
 
 class EventOpsMixin:
     def on_mouse_input(self, mousedev):
         pass
 
-    def on_key_input(self, keyboarddev):
+    def on_key_down(self, key):
+        pass
+
+    def on_key_up(self, key):
         pass
 
     def on_text_input(self, text):
@@ -133,10 +216,8 @@ class Window(EventOpsMixin, GraphicOpsMixin):
 
         self.background = background or draw.BLACK
         self.screen = draw.Form(0, 0, self.w, self.h)  # TODO use factory method
-        self.mousex = 0
-        self.mousey = 0
-        self.pmousex = 0
-        self.pmousey = 0
+        self.mouse = MouseDevice()
+        self.keyboard = KeyboardDevice()
 
         if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) < 0:
             err = f"Cannot initialize SDL, err={sdl2.SDL_GetError()}"
@@ -234,49 +315,40 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         match event.type:
             case sdl2.SDL_QUIT:
                 self.quit()
-            case (
-                sdl2.SDL_MOUSEMOTION | sdl2.SDL_MOUSEBUTTONUP | sdl2.SDL_MOUSEBUTTONDOWN
-            ):
-                self.handle_mouse(event)
+
+            case sdl2.SDL_MOUSEMOTION:
+                self.mouse.move(event.motion.x, event.motion.y)
+                self.on_mouse_input(self.mouse)
+
+            case sdl2.SDL_MOUSEBUTTONUP:
+                self.on_mouse_input(self.mouse)
+
+            case sdl2.SDL_MOUSEBUTTONDOWN:
+                self.on_mouse_input(self.mouse)
+
             case sdl2.SDL_KEYDOWN:
-                self.handle_key(event)
+                key = self.keyboard.press(event.key.keysym.sym)
+                self.on_key_down(key)
+            case sdl2.SDL_KEYUP:
+                key = self.keyboard.release(event.key.keysym.sym)
+                self.on_key_up(key)
+
             case sdl2.SDL_TEXTINPUT:
-                self.handle_text(event)
+                self.on_text_input(event.text.text.decode("utf-8"))
+
             case sdl2.SDL_DROPFILE:
-                self.handle_drop(event)
+                self.on_file_drop(pathlib.Path(event.drop.file.decode(ENCODING)))
+
             case sdl2.SDL_CLIPBOARDUPDATE:
-                self.handle_clipboard_update(event)
+                self.on_clipboard_update(sdl2.SDL_GetClipboardText().decode(ENCODING))
+
             case sdl2.SDL_WINDOWEVENT:
                 if event.window.event == sdl2.SDL_WINDOWEVENT_EXPOSED:
                     self.redisplay()
+
             case _:
                 pass
 
-    def handle_mouse(self, event):
-        if event.type == sdl2.SDL_MOUSEMOTION:
-            self.pmousex = self.mousex
-            self.pmousey = self.mousey
-
-            self.mousex = event.motion.x
-            self.mousey = event.motion.y
-
-        self.on_mouse_input(event)  # TODO pass a generic event (no SDL)
-        self.redisplay()
-
-    def handle_key(self, event):
-        self.on_key_input(event.key.keysym.sym)  # TODO pass a generic event (no SDL)
-        self.redisplay()
-
-    def handle_text(self, event):
-        self.on_text_input(event.text.text.decode("utf-8"))
-        self.redisplay()
-
-    def handle_drop(self, event):
-        self.on_file_drop(pathlib.Path(event.drop.file.decode(ENCODING)))
-        self.redisplay()
-
-    def handle_clipboard_update(self, event):
-        self.on_clipboard_update(sdl2.SDL_GetClipboardText().decode("utf-8"))
         self.redisplay()
 
     def clear(self):
@@ -317,14 +389,16 @@ def basic():
             super().__init__("basic window test", width=420, height=360)
             self.font = font
 
+        def on_key_down(self, key):
+            print(f"{key=}, {self.keyboard=}")
+
         def redraw(self):
             self.clear()
-            x = self.mousex
-            y = self.mousey
+            x = self.mouse.x
+            y = self.mouse.y
             self.draw_text(x, y, f"({x}, {y})", self.font, draw.WHITE, draw.BLACK)
 
     BasicTest(font=UNICODE_8x15).run()
-
 
 
 @gui_test.command()
@@ -333,20 +407,21 @@ def textinput():
 
     class TextInputTest(Window):
         def __init__(self, font):
-            super().__init__("textinput test", width=420, height=360, background=draw.PALE_YELLOW)
+            super().__init__(
+                "textinput test", width=420, height=360, background=draw.PALE_YELLOW
+            )
             self.font = font
             self.doc = []
 
         def on_text_input(self, text):
             self.doc.append(text)
 
-        def on_key_input(self, sym):
-            if sym == sdl2.SDLK_RETURN:
+        def on_key_down(self, key):
+            if key == Modifier.ENTER.name:
                 self.doc.append("\n")
 
         def redraw(self):
             text = "".join(self.doc)
-            print(text)
             self.clear()
             self.draw_text(0, 0, text, self.font, draw.BLACK, draw.PALE_YELLOW)
 

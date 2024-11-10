@@ -295,10 +295,32 @@ class Window(EventOpsMixin, GraphicOpsMixin):
                 self.mouse.move(event.motion.x, event.motion.y)
                 self.on_mouse_input(self.mouse)
 
-            case sdl2.SDL_MOUSEBUTTONUP:
+            case sdl2.SDL_MOUSEBUTTONDOWN:
+                button = event.button.button
+                match button:
+                    case 1:
+                        self.mouse.lb = True
+                    case 2:
+                        self.mouse.mb = True
+                    case 3:
+                        self.mouse.rb = True
+                    case _:
+                        print(f"unhandled MOUSEBUTTONDOWN {button=}")
+
                 self.on_mouse_input(self.mouse)
 
-            case sdl2.SDL_MOUSEBUTTONDOWN:
+            case sdl2.SDL_MOUSEBUTTONUP:
+                button = event.button.button
+                match button:
+                    case 1:
+                        self.mouse.lb = False
+                    case 2:
+                        self.mouse.mb = False
+                    case 3:
+                        self.mouse.rb = False
+                    case _:
+                        print(f"unhandled MOUSEBUTTONUP {button=}")
+
                 self.on_mouse_input(self.mouse)
 
             case sdl2.SDL_KEYDOWN:

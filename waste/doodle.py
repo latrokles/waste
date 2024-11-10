@@ -24,8 +24,17 @@ class Doodle(gui.Window):
         self.clear()
 
     def redraw(self):
-        self.draw_line(self.mouse.px, self.mouse.py, self.mouse.x, self.mouse.y, self.pen)
+        if self.mouse.lb:
+            self.draw_line(
+                self.mouse.px, self.mouse.py, self.mouse.x, self.mouse.y, self.pen
+            )
+
+    def on_key_down(self, key):
+        if key == "q":
+            self.quit()
+        if key == gui.Modifier.ESC.name:
+            self.clear()
 
 
-if  __name__ == "__main__":
+if __name__ == "__main__":
     doodle()

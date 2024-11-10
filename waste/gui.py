@@ -136,32 +136,7 @@ class GraphicOpsMixin:
         pass
 
     def draw_image(self, x, y, image):
-        # TODO implement in terms of bitblt on form
-        src_col_start = 0
-        src_col_end = image.w
-        src_row_end = image.h
-
-        if image.w > self.w:
-            src_col_end = min(self.w + 1, image.w)
-
-        if image.h > self.h:
-            src_row_end = min(self.h + 1, image.h)
-
-        dst_col_end = x + image.w
-        dst_row_end = y + image.h
-
-        if dst_col_end >= self.w:
-            dst_col_end = dst_col_end - (dst_col_end - self.w)
-
-        if dst_row_end >= self.h:
-            dst_row_end = dst_row_end - (dst_row_end - self.h)
-
-        for row in range(src_row_end):
-            self.screen.put_row_bytes(
-                src_col_start,
-                row,
-                image.row_bytes(0, row, src_col_end),
-            )
+        self.screen.bitblt(image, image.rect.clone(), draw.Point(x, y))
 
     def draw_text(self, x, y, text, font, fg_color, bg_color):
         posx = x

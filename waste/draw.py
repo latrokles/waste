@@ -17,6 +17,9 @@ class Point:
     x: int
     y: int
 
+    def clone(self):
+        return Point(self.x, self.y)
+
 
 @dataclass
 class Rectangle:
@@ -54,6 +57,9 @@ class Rectangle:
     @h.setter
     def h(self, h):
         self.corner.y = self.y + h
+
+    def clone(self):
+        return Rectangle(self.origin.clone(), self.corner.clone())
 
 
 class Operation(Enum):
@@ -223,7 +229,7 @@ class Form:
         src_row = src.y
         dst_row = destination.y
 
-        while src_row < src_rect.y:
+        while src_row < src_rect.corner.y:
             self.merge(src, src_rect.x, destination.x, src_row, dst_row, src_rect.w, op)
             src_row += 1
             dst_row += 1

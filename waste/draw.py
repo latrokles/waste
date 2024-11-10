@@ -195,6 +195,7 @@ class Form:
 
         rect = brush.rect.clone()
         dest = Point(from_x, from_y)
+        clip_rect = (clip_rect or self.rect.clone())
 
         if brush is None:
             dest = Point(from_x, from_y)
@@ -334,6 +335,9 @@ class Form:
         return self.bitmap[byte_0:byte_n]
 
     def put_row_bytes(self, x, y, row_bytes):
+        if (x < 0) or (y < 0):
+            return
+
         if x + (len(row_bytes) // self.depth) > self.w:
             pixel_count = len(row_bytes) // self.depth
             stop = x + pixel_count

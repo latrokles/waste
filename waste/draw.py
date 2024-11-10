@@ -12,12 +12,56 @@ class OutOfBoundsError(Exception):
     """Raised when trying to access a location outside a form."""
 
 
+@dataclass
+class Point:
+    x: int
+    y: int
+
+
+@dataclass
+class Rectangle:
+    origin: Point
+    corner: Point
+
+    @property
+    def x(self):
+        return self.origin.x
+
+    @x.setter
+    def x(self, x):
+        self.origin.x = x
+
+    @property
+    def y(self):
+        return self.origin.y
+
+    @y.setter
+    def y(self, y):
+        self.origin.y = y
+
+    @property
+    def w(self):
+        return self.corner.x - self.origin.x
+
+    @w.setter
+    def w(self, w):
+        self.corner.x = self.x + w
+
+    @property
+    def h(self):
+        return self.corner.y - self.origin.y
+
+    @h.setter
+    def h(self, h):
+        self.corner.y = self.y + h
+
+
 class Operation(Enum):
     STORE = "STORE"  # dst = src
-    OR = "OR"        # dst = dst | src
-    AND = "AND"      # dst = dst & src
-    XOR = "XOR"      # dst = dst ^ src
-    CLR = "CLR"      # dst = dst & ~src
+    OR = "OR"  # dst = dst | src
+    AND = "AND"  # dst = dst & src
+    XOR = "XOR"  # dst = dst ^ src
+    CLR = "CLR"  # dst = dst & ~src
 
 
 @dataclass
@@ -62,14 +106,35 @@ WHITE = Color.from_int(0xFFFFFF)
 
 class Form:
     def __init__(self, x, y, w, h, bitmap=None):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
+        self.rect = Rectangle(origin=Point(x, y), corner=Point(x + w, y + h))
 
         if bitmap is None:
             bitmap = bytearray(self.w * self.h * self.depth * [0x00])
         self.bitmap = bitmap
+
+    @property
+    def x(self):
+        return self.rect.x
+
+    @x.setter
+    def x(self, x):
+        self.rect.x = x
+
+    @property
+    def y(self):
+        return self.rect.y
+
+    @y.setter
+    def y(self, y):
+        self.rect.y = y
+
+    @property
+    def w(self):
+        return self.rect.w
+
+    @property
+    def h(self):
+        return self.rect.h
 
     @property
     def depth(self):

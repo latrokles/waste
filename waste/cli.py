@@ -1,6 +1,7 @@
 import click
 
 from waste.aidem import aidem
+from waste.doodle import doodle
 from waste.melody import melody
 from waste.nabu import nabu
 from waste.scribe import scribe
@@ -14,6 +15,7 @@ def cli(debug):
 
 
 cli.add_command(aidem)
+cli.add_command(doodle)
 cli.add_command(melody)
 cli.add_command(nabu)
 cli.add_command(scribe)

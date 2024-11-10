@@ -7,6 +7,16 @@ from enum import Enum
 
 from PIL import Image
 
+from waste.debug import debugmethod
+
+
+def sign(val):
+    if val > 0:
+        return 1
+    if val < 0:
+        return -1
+    return 0
+
 
 class OutOfBoundsError(Exception):
     """Raised when trying to access a location outside a form."""
@@ -150,6 +160,54 @@ class Form:
     def bytes(self):
         return (ctypes.c_char * len(self.bitmap)).from_buffer(self.bitmap)
 
+    def draw_line(self, from_x, from_y, to_x, to_y, brush, op=Operation.STORE):
+        # draw top to bottom or left to right
+        # if points are in reverse direction, swap them
+
+        is_forward = ((from_y == to_y) and (from_x < to_x)) or (from_y < to_y)
+        if not is_forward:
+            from_x, to_x = to_x, from_x
+            from_y, to_y = to_y, from_y
+
+        rect = brush.rect.clone()
+        dest = Point(from_x, from_y)
+
+        if brush is None:
+            dest = Point(from_x, from_y)
+
+        x_delta = to_x - from_x
+        y_delta = to_y - from_y
+
+        dx = sign(x_delta)
+        dy = sign(y_delta)
+        px = abs(y_delta)
+        py = abs(x_delta)
+
+        if py > px:
+            # more horizontal
+            p = py // 2
+            for i in range(0, py):
+                dest.x += dx
+                p = p - px
+                if p < 0:
+                    dest.y += dy
+                    p += py
+                if i < py:
+                    # print(f'drawing at x={dest.x},y={dest.y}')
+                    self.copy_bits(brush, rect, dest, op)
+        else:
+            # more vertical
+            p = px // 2
+            for i in range(0, px):
+                dest.y += dy
+                p = p - py
+                if p < 0:
+                    dest.x += dx
+                    p += px
+                if i < px:
+                    # print(f'drawing at x={dest.x},y={dest.y}')
+                    self.copy_bits(brush, rect, dest, op)
+
     def bitblt(self, src, src_rect, destination, op=Operation.STORE, clip_rect=None):
         """Take bits from the rectangle `src_rect` in source form `src` and
         copy them to a congruent rectangle in `self` with origin in
@@ -265,20 +323,17 @@ class Form:
         self.bitmap[_0th:_nth] = color.values
 
     def row_bytes(self, x, y, pixel_count):
-        if x + (pixel_count - 1) >= self.w:
-            raise OutOfBoundsError(
-                f"reading beyond bitmap width. start={x}, pixels={pixel_count}, bitmap width={self.w}"
-            )
-
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
-        byte_n = byte_0 + (self.depth * (pixel_count - 1))
+        byte_n = byte_0 + (self.depth * (pixel_count))
         return self.bitmap[byte_0:byte_n]
 
     def put_row_bytes(self, x, y, row_bytes):
-        if x + ((len(row_bytes) - 1) / self.depth) >= self.w:
-            raise OutOfBoundsError(
-                f"writing beyond bitmap width. start={x}, pixel_count={len(row_bytes) / self.depth}"
-            )
+        if x + (len(row_bytes) // self.depth) > self.w:
+            pixel_count = len(row_bytes) // self.depth
+            stop = x + pixel_count
+            pixels_to_remove = stop - self.w
+            bytes_to_remove = pixels_to_remove * self.depth
+            row_bytes = row_bytes[:-bytes_to_remove]
 
         byte_0 = (y * (self.w * self.depth)) + (x * self.depth)
         byte_n = byte_0 + len(row_bytes)

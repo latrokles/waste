@@ -122,8 +122,8 @@ class GraphicOpsMixin:
     def draw_path(self, points, brush, op=draw.Operation.STORE):
         pass
 
-    def draw_line(self, x0, y0, x1, y2, brush, op=draw.Operation.STORE):
-        pass
+    def draw_line(self, from_x, from_y, to_x, to_y, brush, op=draw.Operation.STORE):
+        self.screen.draw_line(from_x, from_y, to_x, to_y, brush, op)
 
     def draw_rectangle(
         self, origin, corner, brush, op=draw.Operation.STORE, fill=False

@@ -1,3 +1,6 @@
+""" scratch bitblt implementation to port code over into a very procedural version
+in order to work through the details... it's somewhat broken."""
+
 from dataclasses import dataclass
 from enum import Enum
 
@@ -51,7 +54,7 @@ def bitblt(src_form, dst_form, src_rect, dst_point, clip_rect=None, op=Operation
 
     clip_range(src_form, dst_form, src_rect, dst_point, clip_rect)
     check_overlap()  # TODO
-    copy_loop(src_form, dst_form, src_rect, dst_point, clip_rect, op)
+    copy_bits(src_form, dst_form, src_rect, dst_point, clip_rect, op)
 
 
 def clip_range(src_form, dst_form, src_rect, dst_point, clip_rect):

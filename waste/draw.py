@@ -144,6 +144,111 @@ class Form:
     def bytes(self):
         return (ctypes.c_char * len(self.bitmap)).from_buffer(self.bitmap)
 
+    def bitblt(self, src, src_rect, destination, op=Operation.STORE, clip_rect=None):
+        """Take bits from the rectangle `src_rect` in source form `src` and
+        copy them to a congruent rectangle in `self` with origin in
+        `destination` according to operation `op`.
+
+        An optional clipping rectangle `clip_rect` may be provided to clip the
+        destination region."""
+
+        if clip_rect is None:
+            clip_rect = Rectangle(
+                origin=Point(self.x, self.y),
+                corner=Point(self.x + self.w, self.y + self.h),
+            )
+
+        self.clip_range(src, src_rect, destination, clip_rect)
+        # self.check_overlap()  # TODO implement
+        self.copy_bits(src, src_rect, destination, op)
+
+    def clip_range(self, src, src_rect, destination, clip_rect):
+        # if clipping rect is outside the destination form
+        # we discard the region that is out of bounds
+
+        # left side
+        if clip_rect.origin.x < 0:
+            clip_rect.origin.x = 0
+
+        # right side.
+        if clip_rect.corner.x > self.rect.corner.x:
+            clip_rect.corner.x = self.rect.corner.x
+
+        # top
+        if clip_rect.origin.y < 0:
+            clip_rect.origin.y = 0
+
+        # bottom
+        if clip_rect.corner.y > self.rect.corner.y:
+            clip_rect.corner.y = self.rect.corner.y
+
+        # clip and adjust src_rect
+        # in X
+        if destination.x < clip_rect.origin.x:
+            src_rect.origin.x = src_rect.origin.x + (clip_rect.origin.x - destination.x)
+            destination.x = clip_rect.origin.x
+
+        if src_rect.corner.x > clip_rect.corner.x:
+            src_rect.corner.x = clip_rect.corner.x
+
+        # in Y
+        if destination.y < clip_rect.origin.y:
+            src_rect.origin.y = src_rect.origin.y + (clip_rect.origin.y - destination.y)
+            destination.y = clip_rect.origin.y
+
+        if src_rect.corner.y > clip_rect.corner.y:
+            src_rect.corner.y = clip_rect.corner.y
+
+        if src is None:
+            return
+
+        # adjust source rectangle
+        # in X
+        if src_rect.origin.x < 0:
+            destination.x = destination.x - src_rect.origin.x
+            src_rect.origin.x = 0
+
+        if src_rect.corner.x > src.rect.corner.x:
+            src_rect.corner.x = src.rect.corner.x
+
+        # in Y
+        if src_rect.origin.y < 0:
+            destination.y = destination.y - src_rect.origin.y
+            src_rect.origin.y = 0
+
+        if src_rect.corner.y > src.rect.corner.y:
+            src_rect.corner.y = src.rect.corner.y
+
+    def copy_bits(self, src, src_rect, destination, op):
+        src_row = src.y
+        dst_row = destination.y
+
+        while src_row < src_rect.y:
+            self.merge(src, src_rect.x, destination.x, src_row, dst_row, src_rect.w, op)
+            src_row += 1
+            dst_row += 1
+
+    def merge(self, src, src_x, dst_x, src_row, dst_row, row_width, op):
+        src_bytes = src.row_bytes(src_x, src_row, row_width)
+        dst_bytes = self.row_bytes(dst_x, dst_row, row_width)
+
+        match op:
+            case Operation.STORE:
+                self.put_row_bytes(dst_x, dst_row, src_bytes)
+            case Operation.OR:
+                merged = bytearray(s | d for s, d in zip(src_bytes, dst_bytes))
+                self.put_row_bytes(dst_x, dst_row, merged)
+            case Operation.AND:
+                merged = bytearray(s & d for s, d in zip(src_bytes, dst_bytes))
+                self.put_row_bytes(dst_x, dst_row, merged)
+            case Operation.XOR:
+                merged = bytearray(s ^ d for s, d in zip(src_bytes, dst_bytes))
+                self.put_row_bytes(dst_x, dst_row, merged)
+            case Operation.CLR:
+                self.put_row_bytes(dst_x, dst_row, bytes(len(dst_bytes) * [0x00]))
+            case _:
+                raise RuntimeError(f"Unsupported operation {op=}!")
+
     def color_at(self, x, y):
         _0th, _nth = self._pixel_bytes_range_at_point(x, y)
         pixel_bytes = self.bitmap[_0th:_nth]

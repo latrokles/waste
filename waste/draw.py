@@ -27,6 +27,10 @@ class Point:
     x: int
     y: int
 
+    @property
+    def coordinates(self):
+        return (self.x, self.y)
+
     def clone(self):
         return Point(self.x, self.y)
 
@@ -160,9 +164,29 @@ class Form:
     def bytes(self):
         return (ctypes.c_char * len(self.bitmap)).from_buffer(self.bitmap)
 
-    def draw_line(self, from_x, from_y, to_x, to_y, brush, op=Operation.STORE):
+    def bitblt(self, src, src_rect, destination, op=Operation.STORE, clip_rect=None):
+        """Take bits from the rectangle `src_rect` in source form `src` and
+        copy them to a congruent rectangle in `self` with origin in
+        `destination` according to operation `op`.
+
+        An optional clipping rectangle `clip_rect` may be provided to clip the
+        destination region."""
+
+        if clip_rect is None:
+            clip_rect = Rectangle(
+                origin=Point(self.x, self.y),
+                corner=Point(self.x + self.w, self.y + self.h),
+            )
+
+        self.clip_range(src, src_rect, destination, clip_rect)
+        # self.check_overlap()  # TODO implement
+        self.copy_bits(src, src_rect, destination, op)
+
+    def draw_line(self, p0, p1, brush, op=Operation.STORE, clip_rect=None):
         # draw top to bottom or left to right
         # if points are in reverse direction, swap them
+        from_x, from_y = p0.coordinates
+        to_x, to_y = p1.coordinates
 
         is_forward = ((from_y == to_y) and (from_x < to_x)) or (from_y < to_y)
         if not is_forward:
@@ -207,24 +231,6 @@ class Form:
                 if i < px:
                     # print(f'drawing at x={dest.x},y={dest.y}')
                     self.copy_bits(brush, rect, dest, op)
-
-    def bitblt(self, src, src_rect, destination, op=Operation.STORE, clip_rect=None):
-        """Take bits from the rectangle `src_rect` in source form `src` and
-        copy them to a congruent rectangle in `self` with origin in
-        `destination` according to operation `op`.
-
-        An optional clipping rectangle `clip_rect` may be provided to clip the
-        destination region."""
-
-        if clip_rect is None:
-            clip_rect = Rectangle(
-                origin=Point(self.x, self.y),
-                corner=Point(self.x + self.w, self.y + self.h),
-            )
-
-        self.clip_range(src, src_rect, destination, clip_rect)
-        # self.check_overlap()  # TODO implement
-        self.copy_bits(src, src_rect, destination, op)
 
     def clip_range(self, src, src_rect, destination, clip_rect):
         # if clipping rect is outside the destination form

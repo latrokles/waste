@@ -25,9 +25,7 @@ class Doodle(gui.Window):
 
     def redraw(self):
         if self.mouse.lb:
-            self.draw_line(
-                self.mouse.px, self.mouse.py, self.mouse.x, self.mouse.y, self.pen
-            )
+            self.draw_line(self.mouse.prev_position, self.mouse.position, self.pen)
 
     def on_key_down(self, key):
         if key == "q":

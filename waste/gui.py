@@ -52,13 +52,43 @@ class Modifier(enum.IntEnum):
 
 @dataclass
 class MouseDevice:
-    x: int = 0
-    y: int = 0
-    px: int = 0
-    py: int = 0
+    position: draw.Point
+    prev_position: draw.Point
     lb: bool = False
     mb: bool = False
     rb: bool = False
+
+    @property
+    def x(self):
+        return self.position.x
+
+    @x.setter
+    def x(self, new):
+        self.position.x = new
+
+    @property
+    def y(self):
+        return self.position.y
+
+    @y.setter
+    def y(self, new):
+        self.position.y = new
+
+    @property
+    def px(self):
+        return self.prev_position.x
+
+    @px.setter
+    def px(self, new):
+        self.prev_position.x = new
+
+    @property
+    def py(self):
+        return self.prev_position.y
+
+    @py.setter
+    def py(self, new):
+        self.prev_position.y = new
 
     def move(self, x, y):
         self.px = self.x
@@ -122,8 +152,10 @@ class GraphicOpsMixin:
     def draw_path(self, points, brush, op=draw.Operation.STORE):
         pass
 
-    def draw_line(self, from_x, from_y, to_x, to_y, brush, op=draw.Operation.STORE):
-        self.screen.draw_line(from_x, from_y, to_x, to_y, brush, op)
+    def draw_line(
+        self, from_point, to_point, brush, op=draw.Operation.STORE, clip_rect=None
+    ):
+        self.screen.draw_line(from_point, to_point, brush, op, clip_rect)
 
     def draw_rectangle(
         self, origin, corner, brush, op=draw.Operation.STORE, fill=False
@@ -190,8 +222,10 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         self.fps = fps
 
         self.background = background or draw.BLACK
-        self.screen = draw.Form(0, 0, self.w, self.h)  # TODO use factory method
-        self.mouse = MouseDevice()
+        self.screen = draw.Form(0, 0, self.w, self.h)
+
+        initial_mouse_pos = draw.Point(width // 2, height // 2)
+        self.mouse = MouseDevice(initial_mouse_pos, initial_mouse_pos.clone())
         self.keyboard = KeyboardDevice()
 
         if sdl2.SDL_Init(sdl2.SDL_INIT_VIDEO) < 0:

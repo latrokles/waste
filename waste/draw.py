@@ -219,6 +219,7 @@ class Form:
                     p += py
                 if i < py:
                     # print(f'drawing at x={dest.x},y={dest.y}')
+                    # FIXME this should be a call to bitblt
                     self.copy_bits(brush, rect, dest, op)
         else:
             # more vertical
@@ -231,7 +232,22 @@ class Form:
                     p += px
                 if i < px:
                     # print(f'drawing at x={dest.x},y={dest.y}')
+                    # FIXME this should be a call to bitblt
                     self.copy_bits(brush, rect, dest, op)
+
+        # draw the first point
+        if is_forward:
+            self.copy_bits(brush, rect, p0, op)
+        else:
+            self.copy_bits(brush, rect, p1, op)
+
+    def draw_rectangle(self, origin, corner, brush, op=Operation.STORE, clip_rect=None):
+        top_right = Point(corner.x, origin.y)
+        bottom_left = Point(origin.x, corner.y)
+        self.draw_line(origin, top_right, brush, op)    # top side
+        self.draw_line(top_right, corner, brush, op)    # right side
+        self.draw_line(corner, bottom_left, brush, op)  # bottom side
+        self.draw_line(bottom_left, origin, brush, op)  # left side
 
     def clip_range(self, src, src_rect, destination, clip_rect):
         # if clipping rect is outside the destination form

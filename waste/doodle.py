@@ -66,9 +66,10 @@ class Doodle(gui.Window):
 
     def draw_canvas(self):
         if self.mouse.lb:
-            self.canvas.draw_line(
-                self.mouse.prev_position, self.mouse.position, self.pen
-            )
+            # TODO implement Point.translate
+            p0 = draw.Point(self.mouse.prev_position.x - 5, self.mouse.prev_position.y - 5)
+            p1 = draw.Point(self.mouse.position.x - 5, self.mouse.position.y - 5)
+            self.canvas.draw_line(p0, p1, self.pen)
             self.canvas_updated = True
 
         if self.canvas_updated:

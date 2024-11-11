@@ -31,26 +31,49 @@ class Doodle(gui.Window):
             zoom=2,
             background=draw.PALE_YELLOW,
         )
+        self.ui_pen = draw.Form(0, 0, 1, 1)
+        self.ui_pen.fill(draw.BLACK)
+        self.ui_updated = True
+
         self.canvas = draw.Form(0, 0, 470, 300)
-        self.pen = draw.Form(0, 0, 10, 10)
-        self.pen.fill(draw.BLACK)
         self.clear_canvas()
+        self.canvas_updated = True
+
+        self.pen = draw.Form(0, 0, 1, 1)
+        self.pen.fill(draw.BLACK)
+
+        self.clear()
         self.redraw()
 
     def redraw(self):
-        self.draw_ui()
         self.draw_canvas()
+        self.draw_ui()
 
     def draw_ui(self):
-        self.clear()
-        pass
+        if not self.ui_updated:
+            return
+
+        self.screen.draw_rectangle(
+            draw.Point(5, self.h - 18),
+            draw.Point(475, self.h - 5),
+            self.ui_pen,
+        )
+        self.screen.draw_rectangle(
+            draw.Point(5, 5),
+            draw.Point(5 + self.canvas.w, 5 + self.canvas.h),
+            self.ui_pen,
+        )
 
     def draw_canvas(self):
         if self.mouse.lb:
             self.canvas.draw_line(
                 self.mouse.prev_position, self.mouse.position, self.pen
             )
-        self.screen.bitblt(self.canvas, self.canvas.rect.clone(), draw.Point(5, 5))
+            self.canvas_updated = True
+
+        if self.canvas_updated:
+            self.screen.bitblt(self.canvas, self.canvas.rect.clone(), draw.Point(5, 5))
+            self.canvas_updated = False
 
     def on_key_down(self, key):
         if key == "q":
@@ -60,6 +83,7 @@ class Doodle(gui.Window):
 
     def clear_canvas(self):
         self.canvas.fill(draw.WHITE)
+        self.canvas_updated = True
 
 
 if __name__ == "__main__":

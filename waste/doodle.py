@@ -3,11 +3,7 @@ import click
 
 from waste import draw
 from waste import gui
-
-
-@click.command()
-def doodle():
-    Doodle().run()
+from waste.font import UNICODE_8x15
 
 
 PALETTE = [
@@ -22,20 +18,34 @@ PALETTE = [
 ]
 
 
+WIDTH = 800
+HEIGHT = 600
+ZOOM = 1
+MARGIN = 5
+BORDER_SIZE = 1
+
+@click.command()
+def doodle():
+    Doodle().run()
+
+
 class Doodle(gui.Window):
     def __init__(self):
         super().__init__(
-            "doodle - ✏️",
-            width=480,
-            height=360,
-            zoom=2,
+            "✏️ - doodle",
+            width=WIDTH,
+            height=HEIGHT,
+            zoom=ZOOM,
             background=draw.PALE_YELLOW,
         )
-        self.ui_pen = draw.Form(0, 0, 1, 1)
+
+        self.ui_pen = draw.Form(0, 0, BORDER_SIZE, BORDER_SIZE)
         self.ui_pen.fill(draw.BLACK)
         self.ui_updated = True
 
-        self.canvas = draw.Form(0, 0, 470, 300)
+        self.command_buffer = []
+
+        self.canvas = draw.Form(0, 0, self.w - (MARGIN * 2), int(self.h * 0.75))
         self.clear_canvas()
         self.canvas_updated = True
 
@@ -53,16 +63,37 @@ class Doodle(gui.Window):
         if not self.ui_updated:
             return
 
+        self.clear()
+
+        # draw canvas
+        self.screen.bitblt(
+            self.canvas,
+            self.canvas.rect.clone(),
+            draw.Point(MARGIN, MARGIN),
+        )
+
+        # draw canvas frame
         self.screen.draw_rectangle(
-            draw.Point(5, self.h - 18),
-            draw.Point(475, self.h - 5),
+            draw.Point(MARGIN - 1, MARGIN - 1),
+            draw.Point(MARGIN + self.canvas.w,  MARGIN + self.canvas.h),
             self.ui_pen,
         )
+
+        # draw command buffer
         self.screen.draw_rectangle(
-            draw.Point(5, 5),
-            draw.Point(5 + self.canvas.w, 5 + self.canvas.h),
+            draw.Point(MARGIN, self.h - (MARGIN + 15 + 4)),
+            draw.Point(self.w - MARGIN, self.h - MARGIN),
             self.ui_pen,
         )
+        self.draw_text(
+            7,
+            self.h - 22,
+            "".join(self.command_buffer),
+            UNICODE_8x15,
+            draw.BLACK,
+            draw.PALE_YELLOW,
+        )
+        self.ui_updated = False
 
     def draw_canvas(self):
         if self.mouse.lb:
@@ -76,11 +107,26 @@ class Doodle(gui.Window):
             self.screen.bitblt(self.canvas, self.canvas.rect.clone(), draw.Point(5, 5))
             self.canvas_updated = False
 
+    def on_text_input(self, text):
+        self.command_buffer.append(text)
+        self.ui_updated = True
+
     def on_key_down(self, key):
-        if key == "q":
-            self.quit()
+        if key == gui.Modifier.BACKSPACE.name:
+            if not self.command_buffer:
+                return
+
+            self.command_buffer.pop()
+            self.ui_updated = True
+
+        if key == gui.Modifier.ENTER.name:
+            print("".join(self.command_buffer))
+            self.command_buffer = []
+            self.ui_updated = True
+
         if key == gui.Modifier.ESC.name:
-            self.clear_canvas()
+            self.command_buffer = []
+            self.ui_updated = True
 
     def clear_canvas(self):
         self.canvas.fill(draw.WHITE)

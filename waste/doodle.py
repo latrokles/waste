@@ -120,7 +120,8 @@ class Doodle(gui.Window):
             self.ui_updated = True
 
         if key == gui.Modifier.ENTER.name:
-            print("".join(self.command_buffer))
+            expression = "".join(self.command_buffer)
+            self.eval(expression)
             self.command_buffer = []
             self.ui_updated = True
 
@@ -131,6 +132,15 @@ class Doodle(gui.Window):
     def clear_canvas(self):
         self.canvas.fill(draw.WHITE)
         self.canvas_updated = True
+
+    def eval(self, expression):
+        match expression:
+            case "clear":
+                self.clear_canvas()
+            case "quit":
+                self.quit()
+            case _:
+                print(f"unrecognized command={expression}")
 
 
 if __name__ == "__main__":

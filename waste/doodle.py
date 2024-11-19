@@ -3,7 +3,6 @@ import click
 
 from waste import draw
 from waste import gui
-from waste.font import UNICODE_8x15
 
 
 PALETTE = [
@@ -89,7 +88,7 @@ class Doodle(gui.Window):
             7,
             self.h - 22,
             "".join(self.command_buffer),
-            UNICODE_8x15,
+            "unicode_p9-8x15",
             draw.BLACK,
             draw.PALE_YELLOW,
         )
@@ -135,6 +134,8 @@ class Doodle(gui.Window):
 
     def eval(self, expression):
         match expression:
+            case "list-fonts":
+                print(self.font_manager.list())
             case "clear":
                 self.clear_canvas()
             case "quit":

@@ -2,6 +2,7 @@ import enum
 import ctypes
 import pathlib
 import sys
+import textwrap
 
 import click
 import sdl2
@@ -170,7 +171,9 @@ class GraphicOpsMixin:
     def draw_image(self, x, y, image):
         self.screen.bitblt(image, image.rect.clone(), draw.Point(x, y))
 
-    def draw_text(self, x, y, text, font, fg_color, bg_color):
+    def draw_text(self, x, y, text, font_name, fg_color, bg_color):
+        font = self.font_manager.font(font_name)
+
         posx = x
         posy = y
         for char in text:
@@ -182,7 +185,7 @@ class GraphicOpsMixin:
             self.draw_glyph(
                 posx, posy, font.glyph(char), font.w, font.h, fg_color, bg_color
             )
-            posx += font.w
+            posx += font.w + font.pad
 
     def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
         for row in range(h):
@@ -205,6 +208,50 @@ class GraphicOpsMixin:
         self.screen.put_color_at(x, y, color)
 
 
+class FontManager:
+    def __init__(self, path_to_fonts=None):
+        if not path_to_fonts:
+            path_to_fonts = pathlib.Path().home() / "hexfonts"
+        self.fonts_dir = path_to_fonts or pathlib.Path(path_to_fonts)
+        self.fonts = {}
+        self.load_fonts()
+
+    def font(self, name):
+        return self.fonts.get(name, list(self.fonts.items())[0])
+
+    def list(self):
+        return list(self.fonts.keys())
+
+    def load_fonts(self):
+        for pathname in self.fonts_dir.glob("*.hex"):
+            self.load_hex_font(pathname)
+
+    def load_hex_font(self, pathname):
+        name = pathname.stem
+        _, dims = name.split("-")
+        w, h = dims.split("x")
+        width, height = int(w), int(h)
+        width_in_bytes = width // 8
+        glyphs = [
+            self._parse_hex_glyph_bytes(row, width_in_bytes, height)
+            for row
+            in pathname.read_text("utf-8").split("\n")
+            if row != ""
+        ]
+        self.fonts[name] = draw.Font(
+            name,
+            width,
+            height,
+            {k: v for k, v in glyphs},
+        )
+
+    def _parse_hex_glyph_bytes(self, glyph_row, glyph_width_bytes, glyph_height_pixels):
+        encoding, hexdata = glyph_row.split(":")
+        rows = [int(row, 16) for row in textwrap.wrap(hexdata, glyph_width_bytes * 2)]
+        rows = rows + ([0x00] * (glyph_height_pixels - len(rows)))
+        return int(encoding, 16), rows
+
+
 class Window(EventOpsMixin, GraphicOpsMixin):
     def __init__(
         self,
@@ -215,6 +262,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         fps=DEFAULT_FPS,
         background=None,
         window_opts=0,
+        font_manager=None,
     ):
         self.w = width
         self.h = height
@@ -223,6 +271,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
 
         self.background = background or draw.BLACK
         self.screen = draw.Form(0, 0, self.w, self.h)
+        self.font_manager = font_manager or FontManager()
 
         initial_mouse_pos = draw.Point(width // 2, height // 2)
         self.mouse = MouseDevice(initial_mouse_pos, initial_mouse_pos.clone())
@@ -413,8 +462,6 @@ def gui_test():
 
 @gui_test.command()
 def basic():
-    from waste.font import UNICODE_8x15
-
     class BasicTest(Window):
         def __init__(self, font):
             super().__init__("basic window test", width=420, height=360)
@@ -429,13 +476,11 @@ def basic():
             y = self.mouse.y
             self.draw_text(x, y, f"({x}, {y})", self.font, draw.WHITE, draw.BLACK)
 
-    BasicTest(font=UNICODE_8x15).run()
+    BasicTest(font="unicode_p9-8x15").run()
 
 
 @gui_test.command()
 def textinput():
-    from waste.font import UNICODE_8x15
-
     class TextInputTest(Window):
         def __init__(self, font):
             super().__init__(
@@ -456,7 +501,7 @@ def textinput():
             self.clear()
             self.draw_text(0, 0, text, self.font, draw.BLACK, draw.PALE_YELLOW)
 
-    TextInputTest(font=UNICODE_8x15).run()
+    TextInputTest(font="unicode_p9-8x15").run()
 
 
 @gui_test.command()

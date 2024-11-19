@@ -9,7 +9,6 @@ from typing import List
 
 from waste import draw
 from waste import gui
-from waste.font import UNICODE_8x15
 
 
 OCR_SWIFT_SCRIPT = """
@@ -83,7 +82,7 @@ BACKGROUND = draw.PALE_YELLOW
 @click.command()
 def nabu():
     config = pathlib.Path.home() / ".nabu.json"
-    Nabu(font=UNICODE_8x15, config_pathname=config)
+    Nabu(font="unicode_p9-8x15", config_pathname=config)
 
 
 @dataclass

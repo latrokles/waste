@@ -113,6 +113,32 @@ class Color:
         return Color.from_int(rgbint)
 
 
+class Font:
+    def __init__(self, name, width, height, glyphs):
+        self.name = name
+        self.w = width
+        self.h = height
+        self.glyphs = glyphs
+
+    @property
+    def pad(self):
+        return 1
+
+    @property
+    def count(self):
+        return len(self.glyphs)
+
+    def glyph(self, rune):
+        if isinstance(rune, bytes):
+            rune = rune.decode("utf-8")
+
+        index = ord(rune)
+        if index > self.count:
+            return self.glyphs[191]  # error
+
+        return self.glyphs[index]
+
+
 BLACK = Color.from_int(0x000000)
 DARK_YELLOW = Color.from_int(0xEEEE9E)
 PALE_BLUEGREEN = Color.from_int(0xAAFFFF)

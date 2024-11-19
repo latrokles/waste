@@ -2,7 +2,6 @@ import click
 
 from waste import draw
 from waste import gui
-from waste.font import UNICODE_8x15
 
 
 CELL_W = 9
@@ -20,7 +19,7 @@ BACKGROUND = draw.PALE_YELLOW
 
 @click.command()
 def melody():
-    Melody(font=UNICODE_8x15).run()
+    Melody(font="unicode_p9-8x15").run()
 
 
 class Melody(gui.Window):

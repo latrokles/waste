@@ -273,6 +273,7 @@ class FontManager:
         )
 
     def load_bdf_font(self, pathname):
+        """https://en.wikipedia.org/wiki/Glyph_Bitmap_Distribution_Format"""
         name = pathname.stem
         reader = FontManager.LineReader(pathname)
         font_args = {"name": name, "glyphs": {}}

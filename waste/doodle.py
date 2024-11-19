@@ -29,7 +29,7 @@ def doodle():
 
 
 class Doodle(gui.Window):
-    def __init__(self):
+    def __init__(self, font_name=None):
         super().__init__(
             "✏️ - doodle",
             width=WIDTH,
@@ -37,7 +37,7 @@ class Doodle(gui.Window):
             zoom=ZOOM,
             background=draw.PALE_YELLOW,
         )
-
+        self.font_name = (font_name or self.font_manager.list()[0])
         self.ui_pen = draw.Form(0, 0, BORDER_SIZE, BORDER_SIZE)
         self.ui_pen.fill(draw.BLACK)
         self.ui_updated = True
@@ -88,7 +88,7 @@ class Doodle(gui.Window):
             7,
             self.h - 22,
             "".join(self.command_buffer),
-            "unicode_p9-8x15",
+            self.font_name,
             draw.BLACK,
             draw.PALE_YELLOW,
         )
@@ -133,9 +133,13 @@ class Doodle(gui.Window):
         self.canvas_updated = True
 
     def eval(self, expression):
-        match expression:
+        func, *args = expression.split()
+        match func:
             case "list-fonts":
                 print(self.font_manager.list())
+            case "set-font":
+                font_name = args[0]
+                self.font_name = font_name
             case "clear":
                 self.clear_canvas()
             case "quit":

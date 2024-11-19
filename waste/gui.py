@@ -209,9 +209,33 @@ class GraphicOpsMixin:
 
 
 class FontManager:
+    class LineReader:
+        def __init__(self, pathname):
+            self.pathname = pathlib.Path(pathname)
+            self.idx = 0
+            self.lines = [
+                line for line
+                in self.pathname.read_text("utf-8").split("\n")
+                if line != ""
+            ]
+
+        def read(self):
+            if self.idx >= len(self.lines):
+                return None
+
+            line = self.lines[self.idx]
+            self.idx += 1
+            return line
+
+        def pushback(self):
+            self.idx -= 1
+
+        def __str__(self):
+            return f"<{self.pathname}, {self.idx=}, {self.lines=}>"
+
     def __init__(self, path_to_fonts=None):
         if not path_to_fonts:
-            path_to_fonts = pathlib.Path().home() / "hexfonts"
+            path_to_fonts = pathlib.Path().home() / "wastefonts"
         self.fonts_dir = path_to_fonts or pathlib.Path(path_to_fonts)
         self.fonts = {}
         self.load_fonts()
@@ -225,6 +249,9 @@ class FontManager:
     def load_fonts(self):
         for pathname in self.fonts_dir.glob("*.hex"):
             self.load_hex_font(pathname)
+
+        for pathname in self.fonts_dir.glob("*.bdf"):
+            self.load_bdf_font(pathname)
 
     def load_hex_font(self, pathname):
         name = pathname.stem
@@ -245,11 +272,50 @@ class FontManager:
             {k: v for k, v in glyphs},
         )
 
+    def load_bdf_font(self, pathname):
+        name = pathname.stem
+        reader = FontManager.LineReader(pathname)
+        font_args = {"name": name, "glyphs": {}}
+
+        while (line := reader.read()):
+            directive, *rest = line.split()
+            match directive:
+                case "FONTBOUNDINGBOX":
+                    _, w, h, _x, _y = line.split()
+                    font_args["width"] = int(w)
+                    font_args["height"] = int(h)
+                case "STARTCHAR":
+                    encoding, glyph_bytes = self._parse_bdf_glyph(reader)
+                    font_args["glyphs"][encoding] = glyph_bytes
+                case "ENDFONT":
+                    pass
+                case _:
+                    print(f"Cannot parse {directive=}, {line=}, skipping...")
+        self.fonts[name] = draw.Font(**font_args)
+
     def _parse_hex_glyph_bytes(self, glyph_row, glyph_width_bytes, glyph_height_pixels):
         encoding, hexdata = glyph_row.split(":")
         rows = [int(row, 16) for row in textwrap.wrap(hexdata, glyph_width_bytes * 2)]
         rows = rows + ([0x00] * (glyph_height_pixels - len(rows)))
         return int(encoding, 16), rows
+
+    def _parse_bdf_glyph(self, reader):
+        # read until ENCODING is found
+        while not (line := reader.read()).startswith("ENCODING"):
+            pass
+
+        _, encoding = line.split()
+
+        # advance to bitmap start
+        while (_ := reader.read()) != "BITMAP":
+            pass
+
+        # read the bitmap glyph bytes
+        glyph_bytes = []
+        while (row := reader.read()) != "ENDCHAR":
+            glyph_bytes.append(int(row, 16))
+
+        return int(encoding), glyph_bytes
 
 
 class Window(EventOpsMixin, GraphicOpsMixin):

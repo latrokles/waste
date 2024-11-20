@@ -188,9 +188,15 @@ class GraphicOpsMixin:
             posx += font.w + font.pad
 
     def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
+        bits = 8
+        if w > 8:
+            bits = 16
+        if w > 16:
+            bits = 24
+
         for row in range(h):
             for col in range(w):
-                is_set = (glyph[row] >> ((w - 1) - col)) & 0x1
+                is_set = (glyph[row] >> ((bits - 1) - col)) & 0x1
 
                 val = bg_color
                 if is_set:
@@ -214,8 +220,8 @@ class FontManager:
             self.pathname = pathlib.Path(pathname)
             self.idx = 0
             self.lines = [
-                line for line
-                in self.pathname.read_text("utf-8").split("\n")
+                line
+                for line in self.pathname.read_text("utf-8").split("\n")
                 if line != ""
             ]
 
@@ -261,8 +267,7 @@ class FontManager:
         width_in_bytes = width // 8
         glyphs = [
             self._parse_hex_glyph_bytes(row, width_in_bytes, height)
-            for row
-            in pathname.read_text("utf-8").split("\n")
+            for row in pathname.read_text("utf-8").split("\n")
             if row != ""
         ]
         self.fonts[name] = draw.Font(
@@ -278,7 +283,7 @@ class FontManager:
         reader = FontManager.LineReader(pathname)
         font_args = {"name": name, "glyphs": {}}
 
-        while (line := reader.read()):
+        while line := reader.read():
             directive, *rest = line.split()
             match directive:
                 case "FONTBOUNDINGBOX":

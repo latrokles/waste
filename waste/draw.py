@@ -122,21 +122,35 @@ class Font:
 
     @property
     def pad(self):
-        return 1
-
-    @property
-    def count(self):
-        return len(self.glyphs)
+        return 0
 
     def glyph(self, rune):
         if isinstance(rune, bytes):
             rune = rune.decode("utf-8")
 
-        index = ord(rune)
-        if index > self.count:
-            return self.glyphs[191]  # error
-
-        return self.glyphs[index]
+        missing_glyph = [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            32512,
+            16640,
+            16640,
+            16640,
+            16640,
+            16640,
+            16640,
+            32512,
+            0,
+            0,
+            0,
+            0,
+        ]
+        return self.glyphs.get(ord(rune), missing_glyph)
 
 
 BLACK = Color.from_int(0x000000)
@@ -221,7 +235,7 @@ class Form:
 
         rect = brush.rect.clone()
         dest = Point(from_x, from_y)
-        clip_rect = (clip_rect or self.rect.clone())
+        clip_rect = clip_rect or self.rect.clone()
 
         if brush is None:
             dest = Point(from_x, from_y)
@@ -270,8 +284,8 @@ class Form:
     def draw_rectangle(self, origin, corner, brush, op=Operation.STORE, clip_rect=None):
         top_right = Point(corner.x, origin.y)
         bottom_left = Point(origin.x, corner.y)
-        self.draw_line(origin, top_right, brush, op)    # top side
-        self.draw_line(top_right, corner, brush, op)    # right side
+        self.draw_line(origin, top_right, brush, op)  # top side
+        self.draw_line(top_right, corner, brush, op)  # right side
         self.draw_line(corner, bottom_left, brush, op)  # bottom side
         self.draw_line(bottom_left, origin, brush, op)  # left side
 

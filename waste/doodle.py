@@ -23,6 +23,7 @@ ZOOM = 1
 MARGIN = 5
 BORDER_SIZE = 1
 
+
 @click.command()
 def doodle():
     Doodle().run()
@@ -37,7 +38,7 @@ class Doodle(gui.Window):
             zoom=ZOOM,
             background=draw.PALE_YELLOW,
         )
-        self.font_name = (font_name or self.font_manager.list()[0])
+        self.font_name = font_name or self.font_manager.list()[0]
         self.ui_pen = draw.Form(0, 0, BORDER_SIZE, BORDER_SIZE)
         self.ui_pen.fill(draw.BLACK)
         self.ui_updated = True
@@ -74,7 +75,7 @@ class Doodle(gui.Window):
         # draw canvas frame
         self.screen.draw_rectangle(
             draw.Point(MARGIN - 1, MARGIN - 1),
-            draw.Point(MARGIN + self.canvas.w,  MARGIN + self.canvas.h),
+            draw.Point(MARGIN + self.canvas.w, MARGIN + self.canvas.h),
             self.ui_pen,
         )
 
@@ -97,7 +98,9 @@ class Doodle(gui.Window):
     def draw_canvas(self):
         if self.mouse.lb:
             # TODO implement Point.translate
-            p0 = draw.Point(self.mouse.prev_position.x - 5, self.mouse.prev_position.y - 5)
+            p0 = draw.Point(
+                self.mouse.prev_position.x - 5, self.mouse.prev_position.y - 5
+            )
             p1 = draw.Point(self.mouse.position.x - 5, self.mouse.position.y - 5)
             self.canvas.draw_line(p0, p1, self.pen)
             self.canvas_updated = True

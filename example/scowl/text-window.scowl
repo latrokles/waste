@@ -1,0 +1,36 @@
+; if the package does not exist one is created
+(in-package scowl.example.gui.text-window)
+
+; if explicit symbols are not required they can still
+; be accessed using their fully qualified form (i.e. gui/Window)
+(require [draw/BLACK
+          draw/PALE_YELLOW
+          gui/ENTER
+	  gui/Window
+	  gui/clear
+	  gui/draw-text
+	  gui/on-key-down
+	  gui/on-text-input
+	  gui/redraw
+	  gui/run
+	  str/join])
+
+(defclass TextInputTest [Window] [:font :buffer])
+
+(defn make-txt-window [font]
+  (->TextInputTest "example.gui.text-window" 420 360 PALE_YELLOW font []))
+
+(defmethod on-text-input [[TextInputTest window] text]
+  (append (<<buffer window) text))
+
+(defmethod on-key-down [[TextInputTest window] key]
+  (when (equal? key ENTER)
+        (append (<<buffer window) "\n")))
+
+(defmethod redraw [[TextInputTest window]]
+  (do
+    (clear window)
+    (draw-text window 0 0 (join (<<buffer window) "") (<<font window) BLACK PALE_YELLOW)))
+
+(defn main []
+  (run (make-txt-window "unicode_p9-8x15")))

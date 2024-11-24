@@ -1,0 +1,18 @@
+(in-package scowl.example.gui.basic-window)
+
+(defclass BasicWindow [gui/Window] [:font])
+
+(defmethod gui/on-key-down [[BasicWindow win] key]
+  (print (format "key={}" [key])))
+
+(defmethod gui/redraw [[BasicWindow] win]
+  (do
+    (gui/clear win)
+    (let [[x (gui/<<x (gui/<<mouse win))]
+          [y (gui/<<y (gui/<<mouse win))]
+	  [txt (format "({}, {})" [x y])]]
+      (gui/draw-text win x y (<<font win) draw/WHITE draw/BLACK))))
+
+
+(defn main []
+  (gui/run (->BasicWindow "example.gui.basic-window" 420 360 draw/BLACK "unicode_p9-8x15")))

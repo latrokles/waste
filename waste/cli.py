@@ -2,10 +2,11 @@ import click
 
 from waste.aidem import aidem
 from waste.doodle import doodle
+from waste.gui import gui_test
 from waste.melody import melody
 from waste.nabu import nabu
+from waste.scowl import scowl
 from waste.scribe import scribe
-from waste.gui import gui_test
 
 
 @click.group()
@@ -18,5 +19,6 @@ cli.add_command(aidem)
 cli.add_command(doodle)
 cli.add_command(melody)
 cli.add_command(nabu)
+cli.add_command(scowl)
 cli.add_command(scribe)
 cli.add_command(gui_test)

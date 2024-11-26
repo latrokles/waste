@@ -1,5 +1,21 @@
 import sdl2
 
+from types import MethodType
+
+
+def patch_test_events(instance, events):
+    setattr(instance, "events", events)
+
+    self_redraw = instance.redraw
+
+    def patched_redraw(self):
+        if self.events:
+            sdl2.SDL_PushEvent(self.events.pop(0))
+        self_redraw()
+
+    instance.redraw = MethodType(patched_redraw, instance)
+    return instance
+
 
 def gen_quit():
     e = sdl2.SDL_Event()

@@ -6,21 +6,13 @@ from waste import testgui_utils as tgu
 from waste.doodle import Doodle
 
 
-class WrappedDoodle(Doodle):
-    def __init__(self, events):
-        self.events = events
-        super().__init__()
-
-    def redraw(self):
-        if self.events:
-            sdl2.SDL_PushEvent(self.events.pop(0))
-        super().redraw()
-
-
 class DoodleTest(unittest.TestCase):
+    def setUp(self):
+        self.doodle = Doodle()
+
     def test_handles_quit_event(self):
         with self.assertRaises(SystemExit):
-            WrappedDoodle([tgu.gen_quit()]).run()
+            tgu.patch_test_events(self.doodle, [tgu.gen_quit()]).run()
 
     def test_quit_command_handling(self):
         events = [
@@ -32,4 +24,4 @@ class DoodleTest(unittest.TestCase):
         ]
 
         with self.assertRaises(SystemExit):
-            WrappedDoodle(events).run()
+            tgu.patch_test_events(self.doodle, events).run()

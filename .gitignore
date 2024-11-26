@@ -2,6 +2,7 @@
 .coverage
 __pycache__/
 build/
+dev/
 dist/
 htmlcov
 *.spec

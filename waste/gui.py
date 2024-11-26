@@ -481,6 +481,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
             case sdl2.SDL_KEYDOWN:
                 key = self.keyboard.press(event.key.keysym.sym)
                 self.on_key_down(key)
+
             case sdl2.SDL_KEYUP:
                 key = self.keyboard.release(event.key.keysym.sym)
                 self.on_key_up(key)

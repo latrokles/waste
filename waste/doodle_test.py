@@ -6,6 +6,7 @@ from waste import testgui_utils as tgu
 from waste.doodle import Doodle
 
 
+@unittest.skipIf(tgu.skip_gui_tests(), "SKIPGUI is 'true'")
 class DoodleTest(unittest.TestCase):
     def setUp(self):
         self.doodle = Doodle()

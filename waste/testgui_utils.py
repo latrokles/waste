@@ -1,6 +1,12 @@
+import os
+
 import sdl2
 
 from types import MethodType
+
+
+def skip_gui_tests():
+    return os.getenv("SKIPGUI") == "true"
 
 
 def patch_test_events(instance, events):

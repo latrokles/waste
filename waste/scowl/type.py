@@ -15,7 +15,7 @@ set -> set ... #{v1 v2 v3}
 
 in addition to the above, scowl defines:
 
-symbols -> #'package/name
+symbols -> package/name
 keywords -> :name  or :person/name
 
 and...
@@ -26,54 +26,66 @@ functions.. tbd
 from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
+from datetime import date, datetime
+from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
 class Symbol:
     val: str
-    pkg: str
+    namespace: str | None = None
     meta: [dict[str, Form]] = field(default_factory=dict)
 
+    @property
+    def namespaced(self):
+        return self.namespace is not None
+
     def __hash__(self):
-        return hash((self.val, self.pkg))
+        if self.namespace:
+            return hash((self.val, self.namespace))
+        return hash(self.val)
 
     def __eq__(self, rhs):
         if not isinstance(rhs, Symbol):
             return False
 
-        return (self.val == rhs.val) and (self.pkg == rhs.pkg)
+        if self.namespaced:
+            return (self.val == rhs.val) and (self.namespace == rhs.namespace)
+        return self.val == rhs.val
 
     def __repr__(self):
-        return f"#'{self.pkg}/{self.val}"
+        if self.namespaced:
+            return f"{self.namespace}/{self.val}"
+        return self.val
 
 
 @dataclass(frozen=True, slots=True)
 class Keyword:
     val: str
-    pkg: str | None = None
+    namespace: str | None = None
 
     def __hash__(self):
-        if self.pkg:
-            return hash((self.val, self.pkg))
+        if self.namespace:
+            return hash((self.val, self.namespace))
         return hash(self.val)
 
     def __eq__(self, rhs):
         if not isinstance(rhs, Keyword):
             return False
 
-        if self.pkg:
-            return (self.val == rhs.val) and (self.pkg == rhs.pkg)
+        if self.namespace:
+            return (self.val == rhs.val) and (self.namespace == rhs.namespace)
         return self.val == rhs.val
 
     def __repr__(self):
-        if self.pkg:
-            return f":{self.pkg}/{self.val}"
+        if self.namespace:
+            return f":{self.namespace}/{self.val}"
         return f":{self.val}"
 
 
 @dataclass(frozen=True, slots=True)
 class Condition:
-    key: str
+    key: Keyword
     val: str
     meta: dict[str, Form] = field(default_factory=dict)
 
@@ -98,4 +110,8 @@ Form = (
     | Keyword
     | Condition
     | Fn
+    | date
+    | datetime
+    | UUID
+    | object
 )

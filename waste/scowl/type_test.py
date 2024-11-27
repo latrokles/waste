@@ -17,7 +17,7 @@ class TestSymbol(unittest.TestCase):
         self.assertNotEqual(Symbol("join", "str"), Keyword("foo"))
 
     def test_representation(self):
-        self.assertEqual(repr(Symbol("join", "str")), "#'str/join")
+        self.assertEqual(repr(Symbol("join", "str")), "str/join")
 
 
 class TestKeyword(unittest.TestCase):

@@ -2,6 +2,11 @@ import functools
 import os
 
 
+def debug(s):
+    if os.getenv("DEBUG"):
+        print(s)
+
+
 def debugmethod(func):
     is_debug = os.getenv("DEBUG")
 

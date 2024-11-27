@@ -255,8 +255,8 @@ def _read_uuid(reader):
 DATA_READERS = {
     "#date": _read_date,
     "#datetime": _read_datetime,
-    "#ts-secs": _read_epoch_seconds,
-    "#ts-millis": _read_epoch_millis,
+    "#ts-secs": _read_epoch_seconds,  # TODO remove
+    "#ts-millis": _read_epoch_millis,  # TODO remove
     "#uuid": _read_uuid,
 }
 

@@ -88,6 +88,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(self._read("nil"), None)
         self.assertEqual(self._read("false"), False)
         self.assertEqual(self._read("true"), True)
+        self.assertEqual(self._read("-"), Symbol("-"))
         self.assertEqual(self._read("str/join"), Symbol("join", "str"))
         self.assertEqual(self._read("bar"), Symbol("bar"))
         self.assertEqual(self._read(".foo"), Symbol(".foo"))

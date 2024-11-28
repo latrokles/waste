@@ -106,7 +106,7 @@ def _read_number(reader):
     if FLOAT_REGEX.fullmatch(candidate):
         return float(candidate)
 
-    return Condition(Keyword("ReaderError"), f"Invalid number `{candidate}`!")
+    return Symbol(candidate)
 
 
 def _read_collection(reader, terminator):

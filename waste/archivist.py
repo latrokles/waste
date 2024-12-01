@@ -1,7 +1,11 @@
 import pathlib
 
 import click
+import jinja2
 import markdown
+
+
+HTML_ENGINE = None
 
 
 @click.group()
@@ -22,14 +26,24 @@ def publish(src, dst):
     if not dst.exists():
         raise RuntimeError(f"{dst = } does not exist!")
 
+    initialize_html_renderer(src)
     generate_content(src, dst)
+    print("DONE!!!")
+
+
+def initialize_html_renderer(root):
+    global HTML_ENGINE
+    template_dir = root / "_templates"
+    HTML_ENGINE = jinja2.Environment(loader=jinja2.FileSystemLoader(str(template_dir)))
 
 
 def generate_content(src, dst):
-    print(f"generating static pages from {src=} to {dst=}")
-
     for path in src.glob("*"):
-        if path.name in (".git", "README.md", "_templates",):
+        if path.name in (
+            ".git",
+            "README.md",
+            "_templates",
+        ):
             continue
 
         path_in_dst = dst / path.name
@@ -50,29 +64,39 @@ def generate_content(src, dst):
 
         else:
             path_in_dst.write_text(path.read_text("utf-8"), "utf-8")
+    print(f"Generated `{dst}`!")
 
 
 def markdown_to_html(src_file, dst_file):
-    frontmatter = {}
+    metadata = {}
     source_data = src_file.read_text("utf-8")
     if source_data.startswith("---"):
-        frontmatter, source_data = extract_frontmatter(source_data[4:])
+        metadata, source_data = extract_metadata(source_data[4:])
 
-    dst_file = dst_file.with_suffix(".html")
-    dst_file.write_text(markdown.markdown(source_data), "utf-8")
+    template_name = metadata.get("template", "default.html")
+    template = HTML_ENGINE.get_template(template_name)
+
+    rendered_page = template.render(
+        title=metadata.get("title", ""),
+        date=metadata.get("date", ""),
+        tags=metadata.get("tags", "").split(","),
+        content=markdown.markdown(source_data, extensions=["fenced_code"]),
+    )
+
+    dst_file.with_suffix(".html").write_text(rendered_page, "utf-8")
 
 
-def extract_frontmatter(page_data):
-    def parse_frontmatter(fm):
+def extract_metadata(page_data):
+    def parse_metadata(md):
         parsed = {}
-        for line in fm.split("\n"):
+        for line in md.split("\n"):
             key, *rest = line.split(":")
             parsed[key] = "".join(rest)
         return parsed
 
     delimiter_pos = page_data.find("---")
-    frontmatter_text = page_data[:delimiter_pos]
+    metadata_text = page_data[:delimiter_pos]
 
-    frontmatter = parse_frontmatter(frontmatter_text)
-    content = page_data[delimiter_pos + 5:]
-    return frontmatter, content
+    metadata = parse_metadata(metadata_text)
+    content = page_data[delimiter_pos + 5 :]
+    return metadata, content

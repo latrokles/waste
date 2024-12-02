@@ -62,6 +62,9 @@ def generate_content(src, dst):
             path_in_dst = path_in_dst.with_suffix(f"{suffix}.txt")
             path_in_dst.write_text(path.read_text("utf-8"), "utf-8")
 
+        elif path.suffix in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tga"):
+            path_in_dst.write_bytes(path.read_bytes())
+
         else:
             path_in_dst.write_text(path.read_text("utf-8"), "utf-8")
     print(f"Generated `{dst}`!")

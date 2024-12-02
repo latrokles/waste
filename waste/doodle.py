@@ -109,6 +109,9 @@ class Doodle(gui.Window):
             self.screen.bitblt(self.canvas, self.canvas.rect.clone(), draw.Point(5, 5))
             self.canvas_updated = False
 
+    def on_mouse_pressed(self, mouse):
+        mouse.prev_position = mouse.position.clone()
+
     def on_text_input(self, text):
         self.command_buffer.append(text)
         self.ui_updated = True

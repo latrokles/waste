@@ -124,7 +124,13 @@ class KeyboardDevice:
 
 
 class EventOpsMixin:
-    def on_mouse_input(self, mousedev):
+    def on_mouse_moved(self, mousedev):
+        pass
+
+    def on_mouse_pressed(self, mousedev):
+        pass
+
+    def on_mouse_released(self, mousedev):
         pass
 
     def on_key_down(self, key):
@@ -448,7 +454,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
 
             case sdl2.SDL_MOUSEMOTION:
                 self.mouse.move(event.motion.x, event.motion.y)
-                self.on_mouse_input(self.mouse)
+                self.on_mouse_moved(self.mouse)
 
             case sdl2.SDL_MOUSEBUTTONDOWN:
                 button = event.button.button
@@ -462,7 +468,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
                     case _:
                         print(f"unhandled MOUSEBUTTONDOWN {button=}")
 
-                self.on_mouse_input(self.mouse)
+                self.on_mouse_pressed(self.mouse)
 
             case sdl2.SDL_MOUSEBUTTONUP:
                 button = event.button.button
@@ -476,7 +482,7 @@ class Window(EventOpsMixin, GraphicOpsMixin):
                     case _:
                         print(f"unhandled MOUSEBUTTONUP {button=}")
 
-                self.on_mouse_input(self.mouse)
+                self.on_mouse_released(self.mouse)
 
             case sdl2.SDL_KEYDOWN:
                 key = self.keyboard.press(event.key.keysym.sym)

@@ -1,4 +1,6 @@
+import http.server
 import pathlib
+import socketserver
 
 import click
 import jinja2
@@ -11,6 +13,22 @@ HTML_ENGINE = None
 @click.group()
 def archivist():
     pass
+
+
+@archivist.command()
+@click.option("--dir", type=str, required=True)
+def serve(dir):
+    dir = pathlib.Path(dir).resolve()
+
+    if not dir.exists():
+        raise RuntimeError(f"{dir = } does not exist!")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=dir, **kwargs)
+
+    with socketserver.TCPServer(("", 5173), Handler) as httpd:
+        httpd.serve_forever()
 
 
 @archivist.command()

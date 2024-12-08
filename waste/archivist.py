@@ -83,7 +83,7 @@ def generate_content(src, dst):
         elif path.suffix in (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tga"):
             path_in_dst.write_bytes(path.read_bytes())
 
-        elif path.stem in (".DS_Store"):
+        elif path.stem in (".DS_Store", ".gitignore"):
             continue
 
         else:

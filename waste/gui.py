@@ -120,7 +120,7 @@ class KeyboardDevice:
 
     @property
     def pressed(self):
-        return {mod for mod, val in self.modifiers.items() if val == 1}
+        return {mod for mod, val in self.active.items() if val == 1}
 
 
 class EventOpsMixin:
@@ -192,6 +192,7 @@ class GraphicOpsMixin:
                 posx, posy, font.glyph(char), font.w, font.h, fg_color, bg_color
             )
             posx += font.w + font.pad
+        return posx, posy
 
     def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
         bits = 8
@@ -302,7 +303,8 @@ class FontManager:
                 case "ENDFONT":
                     pass
                 case _:
-                    print(f"Cannot parse {directive=}, {line=}, skipping...")
+                    # print(f"Cannot parse {directive=}, {line=}, skipping...")
+                    pass
         self.fonts[name] = draw.Font(**font_args)
 
     def _parse_hex_glyph_bytes(self, glyph_row, glyph_width_bytes, glyph_height_pixels):

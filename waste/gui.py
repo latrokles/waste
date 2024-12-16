@@ -177,48 +177,13 @@ class GraphicOpsMixin:
     def draw_image(self, x, y, image):
         self.screen.bitblt(image, image.rect.clone(), draw.Point(x, y))
 
-    def draw_text(self, x, y, text, font_name, fg_color, bg_color):
-        font = self.font_manager.font(font_name)
-
-        posx = x
-        posy = y
-        for char in text:
-            if char == "\n":
-                posx = x
-                posy += font.h
-                continue
-
-            self.draw_glyph(
-                posx, posy, font.glyph(char), font.w, font.h, fg_color, bg_color
-            )
-            posx += font.w + font.pad
-        return posx, posy
+    def draw_text(self, x, y, text, font, fg_color, bg_color):
+        if isinstance(font, str):
+            font = self.font_manager.font(font)
+        return self.screen.draw_text(x, y, text, font, fg_color, bg_color)
 
     def draw_glyph(self, x, y, glyph, w, h, fg_color, bg_color):
-        bits = 8
-        if w > 8:
-            bits = 16
-        if w > 16:
-            bits = 24
-
-        for row in range(h):
-            for col in range(w):
-                is_set = (glyph[row] >> ((bits - 1) - col)) & 0x1
-
-                val = bg_color
-                if is_set:
-                    val = fg_color
-
-                self.put_pixel(x + col, y + row, val)
-
-    def put_pixel(self, x, y, color):
-        out_of_bounds_in_x = (x < 0) or x >= self.w
-        out_of_bounds_in_y = (y < 0) or y >= self.h
-
-        if out_of_bounds_in_x or out_of_bounds_in_y:
-            return
-
-        self.screen.put_color_at(x, y, color)
+        self.screen.draw_glyph(x, y, glyph, w, h, fg_color, bg_color)
 
 
 class FontManager:
@@ -400,6 +365,9 @@ class Window(EventOpsMixin, GraphicOpsMixin):
     def size(self):
         return (self.w, self.h)
 
+    def focus(self):
+        sdl2.SDL_RaiseWindow(self.window)
+
     def move(self, x, y):
         sdl2.SDL_SetWindowPosition(self.window, x, y)
 
@@ -534,6 +502,80 @@ class Window(EventOpsMixin, GraphicOpsMixin):
         sdl2.SDL_DestroyWindow(self.window)
         sdl2.SDL_Quit()
         sys.exit(0)
+
+
+class View:
+    def __init__(self, x, y, w, h, fg, bg, x_pad, y_pad):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.fg = fg
+        self.bg = bg
+        self.x_pad = x_pad
+        self.y_pad = y_pad
+        self.painter = draw.Form(0, 0, 1, 1, bytearray(1 * 1 * fg.values))
+        self.bitmap = draw.Form(0, 0, w, h, bytearray(w * h * bg.values))
+        self.is_updated = True
+
+    def update(self):
+        self.is_updated = True
+
+    def draw_on(self, on_bitmap):
+        if not self.is_updated:
+            return
+
+        on_bitmap.bitblt(self.bitmap, self.bitmap.rect.clone(), draw.Point(self.x, self.y))
+        self.is_updated = False
+
+
+class Border(enum.Enum):
+    ALL = "ALL"
+    TOP = "TOP"
+    BOTTOM = "BOTTOM"
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+    SIDES = "SIDES"
+    TOP_BOTTOM = "TOP_BOTTOM"
+
+
+class TextView(View):
+    def __init__(self, x, y, w, h, fg, bg, font, x_pad=0, y_pad=0, border=Border.ALL):
+        super().__init__(x, y, w, h, fg, bg, x_pad, y_pad)
+        self.font = font
+        self.border = border
+        self.clear()
+
+    def draw(self, text):
+        self.clear()
+        self.bitmap.draw_text(self.x_pad, self.y_pad, text, self.font, self.fg, self.bg)
+        self.draw_border()
+        self.update()
+
+    def clear(self):
+        self.bitmap.fill(self.bg)
+        self.draw_border()
+        self.update()
+
+    def draw_border(self):
+        match self.border:
+            case Border.ALL:
+                origin = draw.Point(0, 0)
+                corner = draw.Point(self.w - 1, self.h - 1)
+                self.bitmap.draw_rectangle(origin, corner, self.painter)
+            case Border.LEFT:
+                self.bitmap.draw_line(draw.Point(0, 0), draw.Point(0, self.h), self.painter)
+            case Border.RIGHT:
+                self.bitmap.draw_line(draw.Point(self.w - 1, 0), draw.Point(self.w - 1, self.h), self.painter)
+            case Border.SIDES:
+                self.bitmap.draw_line(draw.Point(0, 0), draw.Point(0, self.h), self.painter)
+                self.bitmap.draw_line(draw.Point(self.w - 1, 0), draw.Point(self.w - 1, self.h), self.painter)
+            case Border.TOP:
+                self.bitmap.draw_line(draw.Point(0, 0), draw.Point(self.w - 1, 0), self.painter)
+            case Border.BOTTOM:
+                self.bitmap.draw_line(draw.Point(0, self.h - 1), draw.Point(self.w - 1, self.h - 1), self.painter)
+            case _:
+                return
 
 
 @click.group()

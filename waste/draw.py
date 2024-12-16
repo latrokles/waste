@@ -34,6 +34,18 @@ class Point:
     def clone(self):
         return Point(self.x, self.y)
 
+    def __add__(self, other):
+        return Point(self.x + other.x, self.y - other.y)
+
+    def __sub__(self, other):
+        return Point(self.x - other.x, self.y - other.y)
+
+    def add(self, y, x):
+        return Point(self.x + x, self.y + y)
+
+    def sub(self, x, y):
+        return Point(self.x - x, self.y - y)
+
 
 @dataclass
 class Rectangle:
@@ -173,6 +185,14 @@ class Form:
         self.bitmap = bitmap
 
     @property
+    def origin(self):
+        return self.rect.origin
+
+    @property
+    def corner(self):
+        return self.rect.corner
+
+    @property
     def x(self):
         return self.rect.x
 
@@ -289,6 +309,34 @@ class Form:
         self.draw_line(corner, bottom_left, brush, op)  # bottom side
         self.draw_line(bottom_left, origin, brush, op)  # left side
 
+    def draw_text(self, x, y, text, font, fg, bg):
+        posx = x
+        posy = y
+
+        for char in text:
+            if char == "\n":
+                posx = x
+                posy += font.h
+                continue
+
+            self.draw_glyph(posx, posy, font.glyph(char), font.w, font.h, fg, bg)
+            posx += font.w + font.pad
+
+        return posx, posy
+
+    def draw_glyph(self, x, y, glyph, w, h, fg, bg):
+        bits = 8
+        if w > 8:
+            bits = 16
+        if w > 16:
+            bits = 24
+
+        for row in range(h):
+            for col in range(w):
+                is_set = (glyph[row] >> ((bits - 1) - col)) & 0x1
+                val = fg if is_set else bg  # I don't quite like this syntax
+                self.put_color_at(x + col, y + row, val)
+
     def clip_range(self, src, src_rect, destination, clip_rect):
         # if clipping rect is outside the destination form
         # we discard the region that is out of bounds
@@ -382,6 +430,12 @@ class Form:
         return Color.from_values(pixel_bytes)
 
     def put_color_at(self, x, y, color):
+        out_of_bounds_in_x = (x < 0) or x >= self.w
+        out_of_bounds_in_y = (y < 0) or y >= self.h
+
+        if out_of_bounds_in_x or out_of_bounds_in_y:
+            return
+
         _0th, _nth = self._pixel_bytes_range_at_point(x, y)
         self.bitmap[_0th:_nth] = color.values
 

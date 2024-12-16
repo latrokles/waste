@@ -1,3 +1,5 @@
+import json
+import pathlib
 import os
 
 import requests
@@ -46,6 +48,7 @@ class Searcher:
 
     def _parse_response(self, json_response):
         contents = json_response.get('contents', {})
+        pathlib.Path("/tmp/yt-dump.json").write_text(json.dumps(contents))
 
         section_list_contents = (
             contents

@@ -1,12 +1,17 @@
+import time
+
 import click
+import yt_dlp
+
+from subprocess import PIPE, Popen
 
 from waste import draw
 from waste import gui
 from waste import yt
 
 
-WIDTH = 500
-HEIGHT = 1000
+WIDTH = 600
+HEIGHT = 1200
 
 TEXT_COLOR = draw.BLACK
 BACKGROUND = draw.PALE_YELLOW
@@ -28,107 +33,81 @@ class Melody(gui.Window):
             zoom=1,
             background=BACKGROUND,
         )
-        self.font = self.font_manager.font(font)
-        self.ui_painter = draw.Form(0, 0, 1, 1)
-        self.disable_resizing()
-        self.move(0, 0)
 
+        self.font = self.font_manager.font(font)
         self.x_margin = self.font.w
         self.y_margin = self.font.h
-        self.command_buffer = []
-        self.error_message = ""
-        self.tracks = []
-        self.current_track_index = None
-        self.ui_updated = True
 
-        self.yt = yt.Searcher()
-
-    @property
-    def current_track(self):
-        if len(self.tracks) == 0:
-            return "There are no tracks loaded."
-
-        if self.current_track_index is None:
-            return "No track selected."
-
-        return self.tracks[self.current_track_index]
-
-    def redraw(self):
-        self.clear()
-        self.drawui()
-
-    def drawui(self):
-        self.drawtrack(self.current_track)
-        self.drawinput()
-        self.drawerror()
-        self.drawresults()
-        self.ui_updated = False
-
-    def drawtrack(self, track):
-        return
-
-        self.draw_text(2 * self.font.w, 2 * self.font.h, "Track:", self.font.name, TEXT_COLOR, BACKGROUND)
-        self.draw_text(2 * self.font.h, 3 * self.font.h, track, self.font.name, TEXT_COLOR, BACKGROUND)
-
-    def drawinput(self):
-        self.screen.draw_rectangle(
-            draw.Point(self.x_margin, self.y_margin),
-            draw.Point(self.w - self.x_margin, self.y_margin + self.font.h + 4),
-            self.ui_painter
-        )
-        self.draw_text(
-            self.x_margin + 4,
-            self.y_margin + 3,
-            "".join(self.command_buffer),
-            self.font.name,
+        self.text_input = gui.TextView(
+            self.x_margin,
+            self.y_margin,
+            self.w - (self.x_margin * 2),
+            self.font.h + 4,
             TEXT_COLOR,
             BACKGROUND,
+            self.font,
+            x_pad=2,
+            y_pad=2,
+            border=gui.Border.BOTTOM
         )
 
-    def drawerror(self):
-        self.screen.draw_line(
-            draw.Point(0, self.h - (self.y_margin + self.font.h + 4)),
-            draw.Point(self.w, self.h - (self.y_margin + self.font.h + 4)),
-            self.ui_painter,
+        self.current_track_view = gui.TextView(
+            self.x_margin,
+            self.text_input.y + self.text_input.h + 4,
+            self.w - (self.x_margin * 2),
+            self.font.h + 4,
+            TEXT_COLOR,
+            BACKGROUND,
+            self.font,
+            x_pad=2,
+            y_pad=2,
+            border=gui.Border.ALL,
         )
-        if self.error_message:
-            self.draw_text(
-                self.x_margin,
-                self.h - (self.y_margin + self.font.h + 2),
-                self.error_message,
-                self.font.name,
-                TEXT_COLOR,
-                BACKGROUND
-            )
 
-    def drawresults(self):
-        def format_index(index):
-            index = index + 1
-            if index < 10:
-                return f"{index: 2d}"
-            return str(index)
+        self.error_view = gui.TextView(
+            0,
+            self.h - self.font.h - 8,
+            self.w,
+            self.font.h + 8,
+            TEXT_COLOR,
+            BACKGROUND,
+            self.font,
+            x_pad=self.font.w,
+            y_pad=4,
+            border=gui.Border.TOP,
+        )
 
-        results_x = self.x_margin + 4
-        results_y = self.y_margin + self.y_margin + self.font.h + 4
-        self.draw_text(results_x, results_y, "results:", self.font.name, TEXT_COLOR, BACKGROUND)
+        self.tracks_view = gui.TextView(
+            self.x_margin,
+            self.text_input.y + self.text_input.h + ((self.font.h + 4) * 2),
+            self.w - (self.x_margin * 2),
+            self.font.h * 50,
+            TEXT_COLOR,
+            BACKGROUND,
+            self.font,
+            x_pad = self.font.w,
+            y_pad = 4,
+            border=gui.Border.SIDES,
+        )
 
-        results_y += self.font.h
-        for i, r in enumerate(self.tracks):
-            text = f"{format_index(i)} -- {r.title}\n{r.length}"
-            _, results_y = self.draw_text(
-                results_x,
-                results_y,
-                text,
-                self.font.name,
-                TEXT_COLOR,
-                BACKGROUND,
-            )
-            results_y += 3
+        self.yt = yt.Searcher()
+        self.process = None
+        self.command_buffer = []
+        self.tracks = []
 
+        self.disable_resizing()
+        self.move(0, 0)
+        self.clear()
+
+    def redraw(self):
+        self.text_input.draw_on(self.screen)
+        self.current_track_view.draw_on(self.screen)
+        self.tracks_view.draw_on(self.screen)
+        self.error_view.draw_on(self.screen)
 
     def on_text_input(self, txt):
         self.command_buffer.append(txt)
-        self.ui_updated = True
+        self.text_input.draw("".join(self.command_buffer))
 
     def on_key_down(self, key):
         if key == gui.Modifier.BACKSPACE.name:
@@ -136,28 +115,90 @@ class Melody(gui.Window):
                 return
 
             self.command_buffer.pop()
+            self.text_input.draw("".join(self.command_buffer))
 
         if key == gui.Modifier.ENTER.name:
             expression = "".join(self.command_buffer)
             self.command_buffer = []
-            self.error_message = ""
+            self.text_input.clear()
             self.eval(expression)
 
         if key == gui.Modifier.ESC.name:
             self.quit()
 
-        self.ui_updated = True
-
     def eval(self, expression):
-        fn, *args = expression.split()
+        fn, *rest = expression.split()
+        arg = " ".join(rest)
         match fn:
             case "search":
-                query = " ".join(args)
-                self.tracks = self.yt.search(query)
-                self.ui_updated = True
+                if not arg:
+                    return
+
+                self.tracks = self.yt.search(arg)
+                self.tracks_view.draw(self.format_tracks())
             case "play":
-                pass
+                if not arg:
+                    self.set_error("Missing track number!")
+                    return
+
+                index = int(arg) - 1
+                media = self.tracks[index]
+
+                url = (
+                    yt_dlp
+                    .YoutubeDL({"quiet": True, "format": "best"})
+                    .extract_info(media.playback_url, download=False)
+                    .get("url")
+                )
+
+                if not url:
+                    self.set_error(f"Missing url for {media.title}!")
+                    return
+
+                if self.process:
+                    self.process.terminate()
+
+                self.process = Popen(
+                    ["ffplay", "-i", url, "-autoexit", "-loglevel", "quiet"],
+                    stdin=PIPE,
+                    stdout=PIPE,
+                    stderr=PIPE
+                )
+
+                self.current_track_view.draw(f"Current: {media.title}")
+                self.focus()
+
+            case "stop":
+                if self.process:
+                    self.process.terminate()
+                    self.current_track_view.clear()
             case "quit":
                 self.quit()
             case _:
-                self.error_message = f"unrecognized {expression =}!"
+                self.set_error(f"unrecognized {expression =}!")
+                return
+        self.error_view.clear()
+
+    def set_error(self, message):
+        self.error_view.draw(message)
+
+    def format_tracks(self):
+        def format_index(index):
+            index = index + 1
+            if index < 10:
+                return f"{index: 2d}"
+            return str(index)
+
+        def format_track(index, track):
+            return "\n".join([
+                f"{format_index(index)} -- {track.title}",
+                f"      {track.length}",
+            ])
+
+        return "\n".join(format_track(i, t) for i, t in enumerate(self.tracks))
+
+    def quit(self):
+        if self.process:
+            self.process.terminate()
+            self.current_track_view.clear()
+        super().quit()

@@ -4,7 +4,7 @@ import subprocess
 import time
 
 
-class MediaPlayer:
+class Player:
     def __init__(self):
         self._sock = "/tmp/mpvsocket"
         self._cmd = ("mpv", "--idle", f"--input-ipc-server={self._sock}")

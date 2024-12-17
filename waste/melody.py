@@ -1,10 +1,8 @@
 import time
 
 import click
-import yt_dlp
 
-from subprocess import PIPE, Popen
-
+from waste import av
 from waste import draw
 from waste import gui
 from waste import yt
@@ -91,7 +89,7 @@ class Melody(gui.Window):
         )
 
         self.yt = yt.Searcher()
-        self.process = None
+        self.player = av.Player()
         self.command_buffer = []
         self.tracks = []
 
@@ -144,34 +142,13 @@ class Melody(gui.Window):
                 index = int(arg) - 1
                 media = self.tracks[index]
 
-                url = (
-                    yt_dlp
-                    .YoutubeDL({"quiet": True, "format": "best"})
-                    .extract_info(media.playback_url, download=False)
-                    .get("url")
-                )
-
-                if not url:
-                    self.set_error(f"Missing url for {media.title}!")
-                    return
-
-                if self.process:
-                    self.process.terminate()
-
-                self.process = Popen(
-                    ["ffplay", "-i", url, "-autoexit", "-loglevel", "quiet"],
-                    stdin=PIPE,
-                    stdout=PIPE,
-                    stderr=PIPE
-                )
-
+                self.player.play_url(media.playback_url)
                 self.current_track_view.draw(f"Current: {media.title}")
                 self.focus()
 
             case "stop":
-                if self.process:
-                    self.process.terminate()
-                    self.current_track_view.clear()
+                self.player.stop()
+                self.current_track_view.clear()
             case "quit":
                 self.quit()
             case _:
@@ -198,7 +175,5 @@ class Melody(gui.Window):
         return "\n".join(format_track(i, t) for i, t in enumerate(self.tracks))
 
     def quit(self):
-        if self.process:
-            self.process.terminate()
-            self.current_track_view.clear()
+        self.player.shutdown()
         super().quit()
